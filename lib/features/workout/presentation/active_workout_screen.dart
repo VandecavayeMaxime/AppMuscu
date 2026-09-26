@@ -5,6 +5,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/text_input_dialog.dart';
+import '../../rest_timer/presentation/rest_line.dart';
+import '../../rest_timer/presentation/rest_timer_providers.dart';
 import '../data/workout_repository.dart';
 import '../domain/set_numbering.dart';
 import '../domain/set_rules.dart';
@@ -157,6 +159,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
         confirm: 'Abandonner',
       );
       if (!abandon || !context.mounted) return;
+      await ref.read(restTimerControllerProvider).stop();
       await repository.discardWorkout(workoutId);
       if (context.mounted) _leave(context);
       return;
@@ -204,6 +207,8 @@ class ActiveWorkoutScreen extends ConsumerWidget {
       validateReadySets = false;
     }
 
+    // Terminer la séance arrête le minuteur de repos (RT-04).
+    await ref.read(restTimerControllerProvider).stop();
     await repository.finishWorkout(
       workoutId,
       validateReadySets: validateReadySets,
@@ -225,6 +230,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
     );
     if (!confirmed || !context.mounted) return;
 
+    await ref.read(restTimerControllerProvider).stop();
     await ref.read(workoutRepositoryProvider).discardWorkout(workoutId);
     if (context.mounted) _leave(context);
   }
@@ -378,14 +384,21 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
             ),
             onDismissed: (_) {
               setState(() => _dismissed.add(set.id));
+              ref.read(restTimerControllerProvider).stopIfFor([set.id]);
               ref.read(workoutRepositoryProvider).deleteSet(set.id);
             },
-            child: SetRow(
-              key: ValueKey(set.id),
-              set: set,
-              label: labels[index],
-              exercise: exercise,
-              previous: index < previous.length ? previous[index] : null,
+            // La série et, juste en dessous, sa ligne de repos (RT-03).
+            child: Column(
+              children: [
+                SetRow(
+                  key: ValueKey(set.id),
+                  set: set,
+                  label: labels[index],
+                  exercise: exercise,
+                  previous: index < previous.length ? previous[index] : null,
+                ),
+                RestLine(set: set, exercise: exercise),
+              ],
             ),
           ),
         Center(
@@ -422,7 +435,11 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
           cancel: 'Annuler',
           confirm: 'Retirer',
         );
-        if (confirmed) await repository.removeExercise(item.entry.id);
+        if (!confirmed) return;
+        await ref
+            .read(restTimerControllerProvider)
+            .stopIfFor(item.sets.map((set) => set.id));
+        await repository.removeExercise(item.entry.id);
     }
   }
 }

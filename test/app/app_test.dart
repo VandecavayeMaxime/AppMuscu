@@ -17,4 +17,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.widgetWithText(AppBar, 'Réglages'), findsOneWidget);
   });
+
+  testApp('demande l’autorisation des notifications au lancement (RT-05)', (
+    tester,
+  ) async {
+    expect(notificationsOf(tester).permissionRequests, 1);
+  });
 }

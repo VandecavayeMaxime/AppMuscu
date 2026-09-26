@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Minuteur de repos (RT-05, RT-06) : notification programmée à la seconde près.
+         USE_EXACT_ALARM est accordée d'office à partir d'Android 13 ; en dessous,
+         SCHEDULE_EXACT_ALARM (accordée d'office jusqu'à Android 12L). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+
     <application
         android:label="AppMuscu"
         android:name="${applicationName}"
@@ -25,6 +34,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Affiche les notifications programmées (flutter_local_notifications). -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

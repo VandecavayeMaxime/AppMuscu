@@ -386,6 +386,23 @@ class WorkoutRepository {
   Future<void> uncompleteSet(String setId) =>
       updateSet(setId, completedAt: const Value(null));
 
+  /// Temps de repos propre à une série (RT-07) ; `null` = valeur par défaut
+  /// (RG-09), 0 = pas de minuteur.
+  Future<void> setSetRest(String setId, int? seconds) async {
+    await (_db.update(_db.workoutSets)..where((s) => s.id.equals(setId))).write(
+      WorkoutSetsCompanion(restSeconds: Value(seconds)),
+    );
+    await _touchWorkoutOfSet(setId);
+  }
+
+  /// Même temps de repos pour toutes les séries d'un exercice (RT-07).
+  Future<void> setExerciseRest(String workoutExerciseId, int? seconds) async {
+    await (_db.update(_db.workoutSets)
+          ..where((s) => s.workoutExerciseId.equals(workoutExerciseId)))
+        .write(WorkoutSetsCompanion(restSeconds: Value(seconds)));
+    await _touchWorkoutOfEntry(workoutExerciseId);
+  }
+
   /// Supprime une série (WO-11). Les numéros des suivantes se décalent tout
   /// seuls, car ils sont calculés à l'affichage (RG-02).
   Future<void> deleteSet(String setId) async {

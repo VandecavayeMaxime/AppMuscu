@@ -356,6 +356,28 @@ void main() {
       },
     );
 
+    test('temps de repos d’une série, ou de toutes celles d’un exercice '
+        '(RT-07)', () async {
+      final workout = await repository.startWorkout();
+      await repository.addExercises(workout.id, [benchPressId]);
+      final entry = (await details(workout.id)).exercises.single;
+      await repository.addSet(entry.entry.id);
+      Future<List<int?>> currentRests() async => [
+        for (final s in (await details(workout.id)).exercises.single.sets)
+          s.restSeconds,
+      ];
+
+      final first = (await details(workout.id)).exercises.single.sets.first;
+      await repository.setSetRest(first.id, 90);
+      expect(await currentRests(), [90, null]);
+
+      await repository.setExerciseRest(entry.entry.id, 150);
+      expect(await currentRests(), [150, 150]);
+
+      await repository.setExerciseRest(entry.entry.id, null);
+      expect(await currentRests(), [null, null]);
+    });
+
     test('abandonner efface la séance et tout son contenu (WO-19)', () async {
       final workout = await repository.startWorkout();
       await repository.addExercises(workout.id, [benchPressId]);

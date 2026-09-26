@@ -93,7 +93,7 @@ Le menu ⋯ (Modifier, Supprimer) n'existe que pour les exercices perso.
 │ Développé couché (barre)              ⋯    │
 │ Série   Précédent     kg     Reps     ✓    │
 │  1      80 × 8        82,5   8       [✓]   │  ← série validée (colorée)
-│  ─────────────── ✓ 1:30 ───────────────    │  ← repos terminé (grisé)
+│  ─────────────── ✓ 1:30 ───────────────    │  ← repos terminé (surligné comme la série)
 │  2      80 × 8        82,5   7       [✓]   │
 │  ▓▓▓▓▓▓▓▓▓▓░░░░░░ 1:23 ░░░░░░░░░░░░░░░░    │  ← repos en cours (progression)
 │  3      80 × 7        82,5   6       [ ]   │
@@ -115,7 +115,7 @@ Le menu ⋯ (Modifier, Supprimer) n'existe que pour les exercices perso.
 |---|---|---|
 | `──── 2:00 ────` | prévu | Temps de repos de la série, affiché discrètement |
 | `▓▓▓▓░░░░ 1:23` | en cours | Barre de progression qui se remplit (▓ = temps écoulé, ░ = temps restant) avec le temps restant |
-| `── ✓ 1:30 ──` | terminé | Ligne grisée avec ✓ |
+| `── ✓ 1:30 ──` | terminé | ✓, ligne surlignée de la même couleur que la série validée |
 
 Chaque série a son propre temps de repos : ici 1:30 après la 1re série, 2:00 après les suivantes.
 
@@ -198,12 +198,12 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 |---|---|---|
 | RT-01 | Le temps de repos se définit **par série**. Une série sans valeur propre prend celle de l'exercice en bibliothèque, sinon le réglage global (2:00 par défaut). Voir RG-09. La valeur 0 désactive le minuteur pour cette série. | M |
 | RT-02 | Valider une série démarre le minuteur de repos **de cette série**, avec son temps de repos. Un seul minuteur tourne à la fois : si on valide une autre série, le repos en cours s'arrête et le nouveau démarre sous la série qu'on vient de valider. Dévalider une série dont le repos tourne arrête le minuteur. | M |
-| RT-03 | **Une ligne de repos suit chaque série**, y compris la dernière d'un exercice. Elle a trois états : **prévu** (temps de repos affiché discrètement, avant validation), **en cours** (barre de progression et temps restant, après validation), **terminé** (grisé avec ✓, une fois le temps écoulé). | M |
+| RT-03 | **Une ligne de repos suit chaque série**, y compris la dernière d'un exercice. Elle a trois états : **prévu** (temps de repos affiché discrètement, avant validation), **en cours** (barre de progression et temps restant, après validation), **terminé** (✓, surligné de la même couleur que la série validée, une fois le temps écoulé). | M |
 | RT-04 | La ligne de repos **n'a aucun bouton**. Pour écourter un repos, il suffit de valider la série suivante (RT-02). Terminer ou abandonner la séance arrête aussi le minuteur. | M |
-| RT-05 | À la fin du repos : vibration et son (désactivables dans les réglages) si l'app est ouverte, notification si elle est en arrière-plan ou si l'écran est verrouillé. | M |
+| RT-05 | À la fin du repos, une notification « Repos terminé — Prochaine série : *exercice* » s'affiche avec le son et la vibration du téléphone, que l'app soit ouverte, en arrière-plan ou l'écran verrouillé. L'autorisation d'afficher des notifications est demandée au lancement de l'app (Android ne pose la question qu'une fois). (Réglage son / vibration : ST-02, au M6.) | M |
 | RT-06 | Le minuteur reste exact quand l'app passe en arrière-plan, est tuée ou que l'écran se verrouille, car il repose sur une heure de fin absolue et non sur un décompte. | M |
 | RT-07 | Taper sur une ligne de repos permet de modifier le temps de repos **de cette série**, avec une option « Appliquer à toutes les séries de l'exercice ». | M |
-| RT-08 | Si la ligne de repos en cours sort de l'écran (défilement) ou si la séance est réduite (WO-20), un compteur compact s'affiche dans l'en-tête ou la barre réduite. Un tap dessus ramène à la ligne. | S |
+| RT-08 | Si la ligne de repos en cours sort de l'écran (défilement) ou si la séance est réduite (WO-20), un compteur compact s'affiche dans l'en-tête ou la barre réduite. Un tap dessus ramène à la ligne. *Reporté au M6, avec la séance réduite.* | S |
 | RT-09 | Dans le réglage de RT-07, une option « Enregistrer comme défaut pour cet exercice » met aussi à jour la bibliothèque. | C |
 
 ### 5.4 Modèles (TP)

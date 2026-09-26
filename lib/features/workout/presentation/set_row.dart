@@ -8,7 +8,15 @@ import '../../../core/utils/duration_format.dart';
 import '../../../core/utils/input_parsing.dart';
 import '../../../core/utils/weight_format.dart';
 import '../../exercises/domain/exercise_enums.dart';
+import '../../rest_timer/domain/rest_timer.dart';
+import '../../rest_timer/presentation/rest_timer_providers.dart';
+import '../../settings/data/settings_repository.dart';
 import '../data/workout_repository.dart';
+
+/// Fond d'une série validée (WO-08), repris par sa ligne de repos une fois
+/// le repos terminé : les deux forment un seul bloc coloré.
+Color completedSetColor(ColorScheme colors) =>
+    colors.primaryContainer.withValues(alpha: 0.6);
 
 /// Colonnes du tableau des séries (WO-05), partagées par l'en-tête et les
 /// lignes pour qu'elles restent alignées.
@@ -140,9 +148,7 @@ class _SetRowState extends ConsumerState<SetRow> {
     final previous = widget.previous;
 
     return Container(
-      color: completed
-          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.6)
-          : null,
+      color: completed ? completedSetColor(theme.colorScheme) : null,
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: SetColumns(
         label: Text(widget.label, style: theme.textTheme.labelLarge),
@@ -277,6 +283,7 @@ class _SetRowState extends ConsumerState<SetRow> {
     FocusScope.of(context).unfocus();
     if (widget.set.completedAt != null) {
       await _repository.uncompleteSet(widget.set.id);
+      await ref.read(restTimerControllerProvider).stopIfFor([widget.set.id]);
       return;
     }
 
@@ -303,6 +310,24 @@ class _SetRowState extends ConsumerState<SetRow> {
         ..showSnackBar(SnackBar(content: Text(missing)));
       return;
     }
+
+    // Le repos démarre AVANT que la série soit marquée validée : sinon la
+    // ligne de repos s'afficherait un instant comme « terminée » (série
+    // validée, mais pas encore de minuteur) avant de passer « en cours ».
+    final globalRest =
+        ref.read(defaultRestSecondsProvider).value ??
+        SettingsRepository.fallbackRestSeconds;
+    await ref
+        .read(restTimerControllerProvider)
+        .start(
+          setId: widget.set.id,
+          seconds: effectiveRestSeconds(
+            setRest: widget.set.restSeconds,
+            exerciseRest: widget.exercise.defaultRestSeconds,
+            globalRest: globalRest,
+          ),
+          nextExercise: widget.exercise.name,
+        );
 
     await _repository.completeSet(
       widget.set.id,

@@ -87,7 +87,7 @@ void main() {
 
       await tester.enterText(nameField(), 'Hip thrust');
       await choose(tester, 'Groupe musculaire', 'Fessiers');
-      await choose(tester, 'Équipement', 'Barre');
+      await choose(tester, 'Catégorie', 'Barre');
       await tester.tap(find.text('Enregistrer'));
       await tester.pumpAndSettle();
 
@@ -104,7 +104,7 @@ void main() {
 
       expect(find.text('Le nom est obligatoire'), findsOneWidget);
       expect(find.text('Choisis un groupe musculaire'), findsOneWidget);
-      expect(find.text('Choisis un équipement'), findsOneWidget);
+      expect(find.text('Choisis une catégorie'), findsOneWidget);
     });
 
     testApp('refuse un nom déjà pris', (tester) async {
@@ -112,7 +112,7 @@ void main() {
 
       await tester.enterText(nameField(), 'squat (BARRE)');
       await choose(tester, 'Groupe musculaire', 'Quadriceps');
-      await choose(tester, 'Équipement', 'Barre');
+      await choose(tester, 'Catégorie', 'Barre');
       await tester.tap(find.text('Enregistrer'));
       await tester.pumpAndSettle();
 
@@ -130,30 +130,40 @@ void main() {
         trackingType: TrackingType.weightReps,
       ),
       (tester) async {
-        await openExercisesTab(tester);
+        Future<void> openMenu(String item) async {
+          await tester.tap(find.byTooltip("Plus d'options"));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(item));
+          await tester.pumpAndSettle();
+        }
 
+        await openExercisesTab(tester);
         await tester.tap(find.text('Hip thrust'));
         await tester.pumpAndSettle();
-        expect(find.text("Modifier l'exercice"), findsOneWidget);
 
+        // Fiche → Modifier → formulaire → retour à la fiche.
+        await openMenu('Modifier');
+        expect(find.text("Modifier l'exercice"), findsOneWidget);
         await tester.enterText(nameField(), 'Hip thrust (machine)');
         await tester.tap(find.text('Enregistrer'));
         await tester.pumpAndSettle();
-        expect(find.text('Hip thrust (machine)'), findsOneWidget);
+        expect(
+          find.widgetWithText(AppBar, 'Hip thrust (machine)'),
+          findsOneWidget,
+        );
 
-        await tester.tap(find.text('Hip thrust (machine)'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Supprimer'));
-        await tester.pumpAndSettle();
+        // Fiche → Supprimer → confirmation → retour à la liste.
+        await openMenu('Supprimer');
         await tester.tap(find.widgetWithText(TextButton, 'Supprimer'));
         await tester.pumpAndSettle();
 
+        expect(find.widgetWithText(AppBar, 'Exercices'), findsOneWidget);
         expect(find.text('Hip thrust (machine)'), findsNothing);
         expect(find.byType(ListTile), findsNWidgets(10));
       },
     );
 
-    testApp("n'ouvre pas le formulaire pour un exercice intégré", (
+    testApp('un exercice intégré ouvre sa fiche, sans menu Modifier', (
       tester,
     ) async {
       await openExercisesTab(tester);
@@ -161,8 +171,8 @@ void main() {
       await tester.tap(find.text('Squat (barre)'));
       await tester.pumpAndSettle();
 
-      expect(find.text("Modifier l'exercice"), findsNothing);
-      expect(find.widgetWithText(AppBar, 'Exercices'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Squat (barre)'), findsOneWidget);
+      expect(find.byTooltip("Plus d'options"), findsNothing);
     });
   });
 }

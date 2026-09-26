@@ -43,6 +43,26 @@ enum BodyPart {
   final String label;
 }
 
+/// Unité de saisie et d'affichage des poids, choisie par exercice (EX-08).
+/// En base, les poids sont toujours en kg (RG-14).
+enum WeightUnit {
+  kg('kg', 1),
+  lb('lb', 0.45359237);
+
+  const WeightUnit(this.label, this.kilograms);
+
+  final String label;
+
+  /// Valeur d'une unité, en kg.
+  final double kilograms;
+
+  /// Convertit une valeur saisie dans cette unité en kg.
+  double toKg(double value) => value * kilograms;
+
+  /// Convertit des kg vers cette unité.
+  double fromKg(double kg) => kg / kilograms;
+}
+
 /// Ce qu'on saisit pour chaque série : détermine les colonnes affichées.
 enum TrackingType {
   weightReps('Poids + reps'),

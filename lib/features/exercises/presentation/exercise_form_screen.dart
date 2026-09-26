@@ -3,17 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/database/app_database.dart';
-import '../../../core/utils/duration_format.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../data/exercise_repository.dart';
 import '../domain/exercise_enums.dart';
 import 'exercise_providers.dart';
 
-/// Temps de repos proposés, en secondes (RT-01).
-const _restChoices = [30, 45, 60, 90, 120, 150, 180, 240, 300];
-
-/// Création ([exerciseId] `null`) ou modification d'un exercice perso
-/// (EX-04, EX-05).
+/// Création ([exerciseId] `null`) ou modification de la définition d'un
+/// exercice perso (EX-04, EX-05). Les préférences se règlent dans la fiche.
 class ExerciseFormScreen extends ConsumerWidget {
   const ExerciseFormScreen({super.key, this.exerciseId});
 
@@ -25,8 +21,9 @@ class ExerciseFormScreen extends ConsumerWidget {
     if (id == null) return const _ExerciseForm();
 
     return ref
-        .watch(exerciseByIdProvider(id))
+        .watch(exerciseProvider(id))
         .when(
+          skipLoadingOnReload: true,
           data: (exercise) => exercise != null && exercise.isCustom
               ? _ExerciseForm(initial: exercise)
               : Scaffold(
@@ -65,14 +62,13 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
   late final _nameController = TextEditingController(
     text: widget.initial?.name,
   );
-  late final _notesController = TextEditingController(
-    text: widget.initial?.notes,
+  late final _instructionsController = TextEditingController(
+    text: widget.initial?.instructions,
   );
   late BodyPart? _bodyPart = widget.initial?.bodyPart;
   late Equipment? _equipment = widget.initial?.equipment;
   late TrackingType _trackingType =
       widget.initial?.trackingType ?? TrackingType.weightReps;
-  late int? _restSeconds = widget.initial?.defaultRestSeconds;
 
   /// Erreur venant de la base (nom déjà pris), affichée sous le champ Nom.
   String? _nameError;
@@ -83,25 +79,16 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
   @override
   void dispose() {
     _nameController.dispose();
-    _notesController.dispose();
+    _instructionsController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // `?_restSeconds` : ajouté à la liste seulement s'il n'est pas null.
-    final restChoices = {..._restChoices, ?_restSeconds}.toList()..sort();
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? "Modifier l'exercice" : 'Nouvel exercice'),
         actions: [
-          if (_isEditing)
-            IconButton(
-              tooltip: 'Supprimer',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: _confirmDelete,
-            ),
           TextButton(
             onPressed: _saving ? null : _save,
             child: const Text('Enregistrer'),
@@ -143,14 +130,14 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
             const SizedBox(height: 16),
             DropdownButtonFormField<Equipment>(
               initialValue: _equipment,
-              decoration: const InputDecoration(labelText: 'Équipement'),
+              decoration: const InputDecoration(labelText: 'Catégorie'),
               items: [
                 for (final value in Equipment.values)
                   DropdownMenuItem(value: value, child: Text(value.label)),
               ],
               onChanged: (value) => _equipment = value,
               validator: (value) =>
-                  value == null ? 'Choisis un équipement' : null,
+                  value == null ? 'Choisis une catégorie' : null,
             ),
             const SizedBox(height: 24),
             Text(
@@ -169,28 +156,14 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
                   setState(() => _trackingType = selection.single),
             ),
             const SizedBox(height: 24),
-            DropdownButtonFormField<int?>(
-              initialValue: _restSeconds,
-              decoration: const InputDecoration(
-                labelText: 'Temps de repos par défaut',
-              ),
-              items: [
-                const DropdownMenuItem(child: Text('Réglage global')),
-                for (final seconds in restChoices)
-                  DropdownMenuItem(
-                    value: seconds,
-                    child: Text(formatDuration(seconds)),
-                  ),
-              ],
-              onChanged: (value) => _restSeconds = value,
-            ),
-            const SizedBox(height: 16),
             TextFormField(
-              controller: _notesController,
-              maxLines: 3,
+              controller: _instructionsController,
+              minLines: 3,
+              maxLines: 8,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
-                labelText: 'Notes (facultatif)',
+                labelText: 'Instructions (facultatif)',
+                alignLabelWithHint: true,
               ),
             ),
           ],
@@ -204,7 +177,8 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
     setState(() => _saving = true);
 
     final repository = ref.read(exerciseRepositoryProvider);
-    final notes = _notesController.text.trim();
+    final text = _instructionsController.text.trim();
+    final instructions = text.isEmpty ? null : text;
     try {
       if (_isEditing) {
         await repository.updateCustom(
@@ -213,8 +187,7 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
           equipment: _equipment!,
           bodyPart: _bodyPart!,
           trackingType: _trackingType,
-          defaultRestSeconds: _restSeconds,
-          notes: notes.isEmpty ? null : notes,
+          instructions: instructions,
         );
       } else {
         await repository.createCustom(
@@ -222,8 +195,7 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
           equipment: _equipment!,
           bodyPart: _bodyPart!,
           trackingType: _trackingType,
-          defaultRestSeconds: _restSeconds,
-          notes: notes.isEmpty ? null : notes,
+          instructions: instructions,
         );
       }
       if (mounted) context.pop();
@@ -233,33 +205,5 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
         _saving = false;
       });
     }
-  }
-
-  Future<void> _confirmDelete() async {
-    final exercise = widget.initial!;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Supprimer « ${exercise.name} » ?'),
-        content: const Text(
-          'Il disparaîtra de la bibliothèque, mais restera visible dans '
-          "les séances et les modèles qui l'utilisent.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    await ref.read(exerciseRepositoryProvider).archiveCustom(exercise.id);
-    if (mounted) context.pop();
   }
 }

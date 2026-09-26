@@ -55,9 +55,15 @@ class Exercises extends Table with UuidPrimaryKey, Timestamps {
   TextColumn get bodyPart => textEnum<BodyPart>()();
   TextColumn get trackingType => textEnum<TrackingType>()();
 
-  /// `null` → réglage global (RG-09).
+  /// Préférence : temps de repos ; `null` → réglage global (RG-09).
   IntColumn get defaultRestSeconds => integer().nullable()();
-  TextColumn get notes => text().nullable()();
+
+  /// Préférence : unité des poids (RG-14).
+  TextColumn get weightUnit =>
+      textEnum<WeightUnit>().withDefault(const Constant('kg'))();
+
+  /// Consignes d'exécution, affichées dans la fiche (EX-09).
+  TextColumn get instructions => text().nullable()();
 
   /// `false` pour les exercices livrés avec l'app.
   BoolColumn get isCustom => boolean().withDefault(const Constant(false))();

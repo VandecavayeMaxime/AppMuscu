@@ -4,6 +4,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../features/exercises/domain/exercise_enums.dart';
 import '../../features/workout/domain/set_type.dart';
+import 'app_database.steps.dart';
 import 'seed/built_in_exercises.dart';
 import 'tables.dart';
 
@@ -28,10 +29,12 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'appmuscu'));
 
-  /// À incrémenter à chaque changement de structure, avec une migration
-  /// dans [migration] (NF-08).
+  /// Version de la structure (NF-08). Pour la changer :
+  /// 1. modifier tables.dart et incrémenter ce numéro ;
+  /// 2. `dart run build_runner build` puis `dart run drift_dev make-migrations` ;
+  /// 3. écrire l'étape `fromXToY` ci-dessous et compléter test/drift/.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -40,6 +43,26 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
       await batch((b) => b.insertAll(exercises, builtInExercises));
     },
+    // Base existante plus ancienne : on applique les étapes une par une.
+    onUpgrade: stepByStep(
+      // v2 : fiche exercice — « notes » devient « instructions », unité par
+      // exercice, consignes pour les exercices intégrés.
+      from1To2: (m, schema) async {
+        await m.renameColumn(
+          schema.exercises,
+          'notes',
+          schema.exercises.instructions,
+        );
+        await m.addColumn(schema.exercises, schema.exercises.weightUnit);
+        for (final MapEntry(key: id, value: text)
+            in builtInInstructions.entries) {
+          await customUpdate(
+            'UPDATE exercises SET instructions = ? WHERE id = ?',
+            variables: [Variable(text), Variable(id)],
+          );
+        }
+      },
+    ),
     // À chaque ouverture : SQLite n'applique les clés étrangères que si on le demande.
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');

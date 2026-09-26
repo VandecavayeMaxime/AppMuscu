@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/exercises/presentation/exercise_detail_screen.dart';
 import '../features/exercises/presentation/exercise_form_screen.dart';
 import '../features/exercises/presentation/exercises_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
@@ -46,9 +47,17 @@ GoRouter _createRouter() => GoRouter(
                 ),
                 GoRoute(
                   path: ':id',
-                  builder: (context, state) => ExerciseFormScreen(
-                    exerciseId: state.pathParameters['id'],
+                  builder: (context, state) => ExerciseDetailScreen(
+                    exerciseId: state.pathParameters['id']!,
                   ),
+                  routes: [
+                    GoRoute(
+                      path: 'modifier',
+                      builder: (context, state) => ExerciseFormScreen(
+                        exerciseId: state.pathParameters['id'],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

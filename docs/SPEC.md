@@ -18,7 +18,7 @@ Application mobile de suivi de musculation inspirée de **Strong** : noter vite 
 
 ### Hors périmètre du MVP
 
-Écran d'historique des séances, export/import, graphiques, records perso, 1RM, mesures corporelles, comptes / sync cloud, supersets, calculateur de disques, unité lbs, cardio avec distance, intégrations santé, iOS. Tout ça est listé dans la [roadmap v2](#8-roadmap-après-le-mvp).
+Écran d'historique des séances, export/import, graphiques, records perso, mesures corporelles, comptes / sync cloud, supersets, calculateur de disques, cardio avec distance, intégrations santé, iOS. Tout ça est listé dans la [roadmap v2](#8-roadmap-après-le-mvp).
 
 > Même sans écran d'historique, les séances terminées sont **conservées en base** : c'est ce qui alimente la colonne « Précédent ».
 
@@ -59,6 +59,30 @@ Barre d'onglets en bas, 3 entrées :
 | **Réglages** | Temps de repos par défaut, vibration/son, thème |
 
 L'écran **Séance en cours** s'ouvre en plein écran par-dessus les onglets. On peut le réduire en barre persistante en bas de l'écran (WO-20).
+
+Toucher un exercice, dans la bibliothèque ou depuis une séance (WO-22), ouvre sa **fiche** avec une flèche de retour (EX-07) :
+
+```
+┌──────────────────────────────────┐      ┌──────────────────────────────────┐
+│ ←  Développé couché (barre)   ⋯  │      │ ←  Développé couché (barre)   ⋯  │
+│   [À propos]      Historique     │      │    À propos     [Historique]     │
+├──────────────────────────────────┤      ├──────────────────────────────────┤
+│      ┌────────────────────┐      │      │ ┌──────────────────────────────┐ │
+│      │  (image générique) │      │      │ │ Push                         │ │
+│      └────────────────────┘      │      │ │ mercredi 23 septembre 2026   │ │
+│ Groupe musculaire    Pectoraux   │      │ │  W   40 kg × 10              │ │
+│ Catégorie                Barre   │      │ │  1   80 kg × 8    ★          │ │
+│                                  │      │ │  2   82,5 kg × 6             │ │
+│ Instructions                     │      │ └──────────────────────────────┘ │
+│ 1. Allonge-toi sur le banc…      │      │ ┌──────────────────────────────┐ │
+│                                  │      │ │ Séance du soir               │ │
+│ Préférences                      │      │ │ lundi 21 septembre 2026      │ │
+│ Unité                 [kg | lb]  │      │ │  1   77,5 kg × 8  ★          │ │
+│ Minuteur de repos  Réglage global│      │ └──────────────────────────────┘ │
+└──────────────────────────────────┘      └──────────────────────────────────┘
+```
+
+Le menu ⋯ (Modifier, Supprimer) n'existe que pour les exercices perso.
 
 ### Maquette : séance en cours
 
@@ -107,9 +131,13 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | EX-01 | L'app est livrée avec les **10 exercices de base** listés ci-dessous. | M |
 | EX-02 | Liste alphabétique avec recherche par nom, insensible à la casse et aux accents (« developpe » trouve « Développé couché »). | M |
 | EX-03 | Filtres par groupe musculaire et par équipement. | S |
-| EX-04 | Créer un exercice perso : nom, équipement, groupe musculaire, type de suivi, temps de repos par défaut (optionnel). | M |
-| EX-05 | Modifier ou supprimer un exercice perso. Un exercice déjà utilisé dans une séance terminée est **archivé** : il disparaît de la bibliothèque mais reste en base avec les séances passées. | M |
+| EX-04 | Créer un exercice perso : nom, groupe musculaire, catégorie (= équipement), type de suivi, instructions (facultatif). | M |
+| EX-05 | Modifier ou supprimer un exercice perso, depuis le menu ⋯ de sa fiche. Un exercice supprimé est **archivé** : il disparaît de la bibliothèque mais reste en base avec les séances et modèles qui l'utilisent. | M |
 | EX-06 | Le nom d'un exercice actif est unique (sans tenir compte de la casse ni des accents). | S |
+| EX-07 | **Fiche exercice.** Toucher n'importe quel exercice ouvre sa fiche (avec retour arrière), qui a deux onglets : « À propos » (EX-09) et « Historique » (EX-10). | M |
+| EX-08 | **Préférences par exercice**, réglables pour tous les exercices, intégrés compris : unité des poids (kg ou lb, kg par défaut, masquée pour les exercices sans poids) et minuteur de repos (réglage global, désactivé, ou de 0:30 à 5:00). | M |
+| EX-09 | **Onglet « À propos »** : image du mouvement (générique pour l'instant), groupe musculaire, catégorie, instructions (fournies pour les exercices intégrés, saisies pour les exercices perso), préférences (EX-08). | M |
+| EX-10 | **Onglet « Historique »** : un bloc par séance terminée où l'exercice a au moins une série validée, de la plus récente à la plus ancienne. Chaque bloc affiche le nom de la séance, la date et les séries validées (RG-02), avec la meilleure série marquée ★ (RG-13). | M |
 
 **Bibliothèque initiale**
 
@@ -136,7 +164,7 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 
 *Lest/assistance (± kg) et distance + durée arrivent en v2.*
 
-**Équipements :** Barre, Haltères, Machine, Poulie, Kettlebell, Poids du corps, Élastique, Autre.
+**Équipements** (appelés « Catégorie » dans l'interface) **:** Barre, Haltères, Machine, Poulie, Kettlebell, Poids du corps, Élastique, Autre.
 **Groupes musculaires :** Pectoraux, Dos, Épaules, Biceps, Triceps, Avant-bras, Abdos, Quadriceps, Ischios, Fessiers, Mollets, Corps entier, Cardio, Autre.
 
 ### 5.2 Séance en cours (WO)
@@ -164,6 +192,7 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | WO-19 | Abandonner la séance (avec confirmation) la supprime définitivement. | M |
 | WO-20 | Réduire la séance en barre persistante (nom, chrono et repos en cours) pour naviguer dans les onglets, puis la rouvrir d'un tap. | S |
 | WO-21 | **Persistance :** chaque modification est enregistrée immédiatement. Si l'app est tuée, on retrouve la séance intacte au redémarrage, avec un bandeau « Séance en cours — Reprendre ». | M |
+| WO-22 | Le menu ⋯ d'un exercice en séance permet d'ouvrir sa fiche (EX-07), pour revoir son historique entre deux séries. | M |
 
 ### 5.3 Minuteur de repos (RT)
 
@@ -205,7 +234,7 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 
 | ID | Règle |
 |---|---|
-| RG-01 | **Volume** = Σ (kg × reps) des séries **validées** de type Normale, Drop set ou Échec. Les échauffements, les exercices « reps seules » et les exercices « durée » ne comptent pas. |
+| RG-01 | **Volume** = Σ (kg × reps) des séries **validées** de type Normale, Drop set ou Échec, toujours calculé en kg. Les échauffements, les exercices « reps seules » et les exercices « durée » ne comptent pas. |
 | RG-02 | **Numérotation** : les séries normales sont numérotées 1, 2, 3… dans l'ordre. Les autres affichent leur lettre (W, D, F). |
 | RG-03 | **Correspondance « Précédent »** : la k-ième série d'un exercice (tous types confondus, dans l'ordre) correspond à la k-ième série du même exercice dans la séance de référence (RG-04). |
 | RG-04 | **Séance de référence** d'un exercice : la séance terminée et non supprimée la plus récente (par date de début) qui contient au moins une série validée de cet exercice. La séance en cours est exclue. |
@@ -217,6 +246,8 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | RG-10 | Les suppressions sont « douces » en base (marquées, pas effacées) pour préparer la sync. L'utilisateur ne voit pas la différence. Exception : une séance abandonnée est effacée pour de bon. |
 | RG-11 | **Placeholder d'un champ** = valeur prévue dans le modèle si elle existe, sinon valeur « Précédent », sinon rien. |
 | RG-12 | Une série ajoutée reprend le temps de repos propre de la série au-dessus. S'il n'y en a pas, elle n'a pas de valeur propre et RG-09 s'applique. |
+| RG-13 | **Meilleure série** d'une séance (échauffements exclus ; en cas d'égalité, la première) : poids + reps → le 1RM estimé le plus élevé (formule d'Epley : kg × (1 + reps / 30), ce qui permet de comparer 100 kg × 5 et 90 kg × 10) ; reps seules → le plus de reps ; durée → la plus longue. |
+| RG-14 | **Unités** : les poids sont toujours enregistrés en kg. Ils sont saisis et affichés dans l'unité de l'exercice (1 lb = 0,45359237 kg), avec la virgule française et au plus 2 décimales. |
 
 ## 7. Exigences non fonctionnelles (NF)
 
@@ -235,16 +266,15 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 
 ## 8. Roadmap après le MVP
 
-- **Historique :** liste des séances, détail, modification, suppression, refaire une séance, fiche exercice avec ses séances passées
+- **Historique :** liste des séances, détail, modification, suppression, refaire une séance
 - **Données :** export/import JSON, export CSV
-- **Progression :** records perso, 1RM estimé (formule d'Epley), badge « PR » pendant la séance
-- **Graphiques :** par exercice (1RM, volume, poids max), statistiques hebdomadaires
+- **Fiche exercice :** vraies images ou vidéos des mouvements ; onglet « Records » (records perso, 1RM estimé, badge « PR » pendant la séance) ; onglet « Graphique » (1RM, volume, poids max dans le temps)
+- **Statistiques :** statistiques hebdomadaires
 - **Mesures corporelles :** poids, % de masse grasse, tours de bras/taille…
 - **Séance :** supersets et circuits, calculateur de disques, séries d'échauffement suggérées
 - **Types de suivi :** lest/assistance (± kg), distance + durée (cardio)
 - **Organisation :** dossiers de modèles, programmes sur plusieurs semaines
 - **Bibliothèque :** enrichir la liste d'exercices intégrés
-- **Unités :** lbs
 - **Cloud :** comptes et synchronisation multi-appareils (ex. Supabase)
 - **Plateformes et intégrations :** iOS, widget d'écran d'accueil, Health Connect, montre
 
@@ -259,3 +289,7 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | D5 | Bibliothèque initiale | 10 exercices de base (§5.1) |
 | D6 | Niveau du développeur | Débutant en Flutter → concepts expliqués au fil des jalons |
 | D7 | Navigation | go_router, appris dès le début (très utilisé dans les projets pros) |
+| D8 | Fiche exercice | Ajoutée au MVP (EX-07 à EX-10) : onglets « À propos » et « Historique », pour tous les exercices |
+| D9 | Catégorie | « Catégorie » = équipement (comme dans Strong) |
+| D10 | Unités | Choix kg / lb **par exercice** (kg par défaut), pas de réglage global. Les lb entrent donc dans le MVP |
+| D11 | Idées retenues | Ouvrir la fiche pendant une séance (WO-22), meilleure série ★ (RG-13), onglets Records et Graphique en v2 |

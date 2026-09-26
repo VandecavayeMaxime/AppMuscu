@@ -115,10 +115,22 @@ class $ExercisesTable extends Exercises
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
-  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
-    'notes',
+  late final GeneratedColumnWithTypeConverter<WeightUnit, String> weightUnit =
+      GeneratedColumn<String>(
+        'weight_unit',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('kg'),
+      ).withConverter<WeightUnit>($ExercisesTable.$converterweightUnit);
+  static const VerificationMeta _instructionsMeta = const VerificationMeta(
+    'instructions',
+  );
+  @override
+  late final GeneratedColumn<String> instructions = GeneratedColumn<String>(
+    'instructions',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -151,7 +163,8 @@ class $ExercisesTable extends Exercises
     bodyPart,
     trackingType,
     defaultRestSeconds,
-    notes,
+    weightUnit,
+    instructions,
     isCustom,
   ];
   @override
@@ -215,10 +228,13 @@ class $ExercisesTable extends Exercises
         ),
       );
     }
-    if (data.containsKey('notes')) {
+    if (data.containsKey('instructions')) {
       context.handle(
-        _notesMeta,
-        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+        _instructionsMeta,
+        instructions.isAcceptableOrUnknown(
+          data['instructions']!,
+          _instructionsMeta,
+        ),
       );
     }
     if (data.containsKey('is_custom')) {
@@ -282,9 +298,15 @@ class $ExercisesTable extends Exercises
         DriftSqlType.int,
         data['${effectivePrefix}default_rest_seconds'],
       ),
-      notes: attachedDatabase.typeMapping.read(
+      weightUnit: $ExercisesTable.$converterweightUnit.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}weight_unit'],
+        )!,
+      ),
+      instructions: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}notes'],
+        data['${effectivePrefix}instructions'],
       ),
       isCustom: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -306,6 +328,8 @@ class $ExercisesTable extends Exercises
   $convertertrackingType = const EnumNameConverter<TrackingType>(
     TrackingType.values,
   );
+  static JsonTypeConverter2<WeightUnit, String, String> $converterweightUnit =
+      const EnumNameConverter<WeightUnit>(WeightUnit.values);
 }
 
 class Exercise extends DataClass implements Insertable<Exercise> {
@@ -323,9 +347,14 @@ class Exercise extends DataClass implements Insertable<Exercise> {
   final BodyPart bodyPart;
   final TrackingType trackingType;
 
-  /// `null` → réglage global (RG-09).
+  /// Préférence : temps de repos ; `null` → réglage global (RG-09).
   final int? defaultRestSeconds;
-  final String? notes;
+
+  /// Préférence : unité des poids (RG-14).
+  final WeightUnit weightUnit;
+
+  /// Consignes d'exécution, affichées dans la fiche (EX-09).
+  final String? instructions;
 
   /// `false` pour les exercices livrés avec l'app.
   final bool isCustom;
@@ -340,7 +369,8 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     required this.bodyPart,
     required this.trackingType,
     this.defaultRestSeconds,
-    this.notes,
+    required this.weightUnit,
+    this.instructions,
     required this.isCustom,
   });
   @override
@@ -372,8 +402,13 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     if (!nullToAbsent || defaultRestSeconds != null) {
       map['default_rest_seconds'] = Variable<int>(defaultRestSeconds);
     }
-    if (!nullToAbsent || notes != null) {
-      map['notes'] = Variable<String>(notes);
+    {
+      map['weight_unit'] = Variable<String>(
+        $ExercisesTable.$converterweightUnit.toSql(weightUnit),
+      );
+    }
+    if (!nullToAbsent || instructions != null) {
+      map['instructions'] = Variable<String>(instructions);
     }
     map['is_custom'] = Variable<bool>(isCustom);
     return map;
@@ -395,9 +430,10 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       defaultRestSeconds: defaultRestSeconds == null && nullToAbsent
           ? const Value.absent()
           : Value(defaultRestSeconds),
-      notes: notes == null && nullToAbsent
+      weightUnit: Value(weightUnit),
+      instructions: instructions == null && nullToAbsent
           ? const Value.absent()
-          : Value(notes),
+          : Value(instructions),
       isCustom: Value(isCustom),
     );
   }
@@ -424,7 +460,10 @@ class Exercise extends DataClass implements Insertable<Exercise> {
         serializer.fromJson<String>(json['trackingType']),
       ),
       defaultRestSeconds: serializer.fromJson<int?>(json['defaultRestSeconds']),
-      notes: serializer.fromJson<String?>(json['notes']),
+      weightUnit: $ExercisesTable.$converterweightUnit.fromJson(
+        serializer.fromJson<String>(json['weightUnit']),
+      ),
+      instructions: serializer.fromJson<String?>(json['instructions']),
       isCustom: serializer.fromJson<bool>(json['isCustom']),
     );
   }
@@ -448,7 +487,10 @@ class Exercise extends DataClass implements Insertable<Exercise> {
         $ExercisesTable.$convertertrackingType.toJson(trackingType),
       ),
       'defaultRestSeconds': serializer.toJson<int?>(defaultRestSeconds),
-      'notes': serializer.toJson<String?>(notes),
+      'weightUnit': serializer.toJson<String>(
+        $ExercisesTable.$converterweightUnit.toJson(weightUnit),
+      ),
+      'instructions': serializer.toJson<String?>(instructions),
       'isCustom': serializer.toJson<bool>(isCustom),
     };
   }
@@ -464,7 +506,8 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     BodyPart? bodyPart,
     TrackingType? trackingType,
     Value<int?> defaultRestSeconds = const Value.absent(),
-    Value<String?> notes = const Value.absent(),
+    WeightUnit? weightUnit,
+    Value<String?> instructions = const Value.absent(),
     bool? isCustom,
   }) => Exercise(
     id: id ?? this.id,
@@ -479,7 +522,8 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     defaultRestSeconds: defaultRestSeconds.present
         ? defaultRestSeconds.value
         : this.defaultRestSeconds,
-    notes: notes.present ? notes.value : this.notes,
+    weightUnit: weightUnit ?? this.weightUnit,
+    instructions: instructions.present ? instructions.value : this.instructions,
     isCustom: isCustom ?? this.isCustom,
   );
   Exercise copyWithCompanion(ExercisesCompanion data) {
@@ -500,7 +544,12 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       defaultRestSeconds: data.defaultRestSeconds.present
           ? data.defaultRestSeconds.value
           : this.defaultRestSeconds,
-      notes: data.notes.present ? data.notes.value : this.notes,
+      weightUnit: data.weightUnit.present
+          ? data.weightUnit.value
+          : this.weightUnit,
+      instructions: data.instructions.present
+          ? data.instructions.value
+          : this.instructions,
       isCustom: data.isCustom.present ? data.isCustom.value : this.isCustom,
     );
   }
@@ -518,7 +567,8 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           ..write('bodyPart: $bodyPart, ')
           ..write('trackingType: $trackingType, ')
           ..write('defaultRestSeconds: $defaultRestSeconds, ')
-          ..write('notes: $notes, ')
+          ..write('weightUnit: $weightUnit, ')
+          ..write('instructions: $instructions, ')
           ..write('isCustom: $isCustom')
           ..write(')'))
         .toString();
@@ -536,7 +586,8 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     bodyPart,
     trackingType,
     defaultRestSeconds,
-    notes,
+    weightUnit,
+    instructions,
     isCustom,
   );
   @override
@@ -553,7 +604,8 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           other.bodyPart == this.bodyPart &&
           other.trackingType == this.trackingType &&
           other.defaultRestSeconds == this.defaultRestSeconds &&
-          other.notes == this.notes &&
+          other.weightUnit == this.weightUnit &&
+          other.instructions == this.instructions &&
           other.isCustom == this.isCustom);
 }
 
@@ -568,7 +620,8 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
   final Value<BodyPart> bodyPart;
   final Value<TrackingType> trackingType;
   final Value<int?> defaultRestSeconds;
-  final Value<String?> notes;
+  final Value<WeightUnit> weightUnit;
+  final Value<String?> instructions;
   final Value<bool> isCustom;
   final Value<int> rowid;
   const ExercisesCompanion({
@@ -582,7 +635,8 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     this.bodyPart = const Value.absent(),
     this.trackingType = const Value.absent(),
     this.defaultRestSeconds = const Value.absent(),
-    this.notes = const Value.absent(),
+    this.weightUnit = const Value.absent(),
+    this.instructions = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -597,7 +651,8 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     required BodyPart bodyPart,
     required TrackingType trackingType,
     this.defaultRestSeconds = const Value.absent(),
-    this.notes = const Value.absent(),
+    this.weightUnit = const Value.absent(),
+    this.instructions = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : name = Value(name),
@@ -616,7 +671,8 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Expression<String>? bodyPart,
     Expression<String>? trackingType,
     Expression<int>? defaultRestSeconds,
-    Expression<String>? notes,
+    Expression<String>? weightUnit,
+    Expression<String>? instructions,
     Expression<bool>? isCustom,
     Expression<int>? rowid,
   }) {
@@ -632,7 +688,8 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
       if (trackingType != null) 'tracking_type': trackingType,
       if (defaultRestSeconds != null)
         'default_rest_seconds': defaultRestSeconds,
-      if (notes != null) 'notes': notes,
+      if (weightUnit != null) 'weight_unit': weightUnit,
+      if (instructions != null) 'instructions': instructions,
       if (isCustom != null) 'is_custom': isCustom,
       if (rowid != null) 'rowid': rowid,
     });
@@ -649,7 +706,8 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Value<BodyPart>? bodyPart,
     Value<TrackingType>? trackingType,
     Value<int?>? defaultRestSeconds,
-    Value<String?>? notes,
+    Value<WeightUnit>? weightUnit,
+    Value<String?>? instructions,
     Value<bool>? isCustom,
     Value<int>? rowid,
   }) {
@@ -664,7 +722,8 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
       bodyPart: bodyPart ?? this.bodyPart,
       trackingType: trackingType ?? this.trackingType,
       defaultRestSeconds: defaultRestSeconds ?? this.defaultRestSeconds,
-      notes: notes ?? this.notes,
+      weightUnit: weightUnit ?? this.weightUnit,
+      instructions: instructions ?? this.instructions,
       isCustom: isCustom ?? this.isCustom,
       rowid: rowid ?? this.rowid,
     );
@@ -709,8 +768,13 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     if (defaultRestSeconds.present) {
       map['default_rest_seconds'] = Variable<int>(defaultRestSeconds.value);
     }
-    if (notes.present) {
-      map['notes'] = Variable<String>(notes.value);
+    if (weightUnit.present) {
+      map['weight_unit'] = Variable<String>(
+        $ExercisesTable.$converterweightUnit.toSql(weightUnit.value),
+      );
+    }
+    if (instructions.present) {
+      map['instructions'] = Variable<String>(instructions.value);
     }
     if (isCustom.present) {
       map['is_custom'] = Variable<bool>(isCustom.value);
@@ -734,7 +798,8 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
           ..write('bodyPart: $bodyPart, ')
           ..write('trackingType: $trackingType, ')
           ..write('defaultRestSeconds: $defaultRestSeconds, ')
-          ..write('notes: $notes, ')
+          ..write('weightUnit: $weightUnit, ')
+          ..write('instructions: $instructions, ')
           ..write('isCustom: $isCustom, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3940,7 +4005,8 @@ typedef $$ExercisesTableCreateCompanionBuilder = ExercisesCompanion Function({
   required BodyPart bodyPart,
   required TrackingType trackingType,
   Value<int?> defaultRestSeconds,
-  Value<String?> notes,
+  Value<WeightUnit> weightUnit,
+  Value<String?> instructions,
   Value<bool> isCustom,
   Value<int> rowid,
 });
@@ -3955,7 +4021,8 @@ typedef $$ExercisesTableUpdateCompanionBuilder = ExercisesCompanion Function({
   Value<BodyPart> bodyPart,
   Value<TrackingType> trackingType,
   Value<int?> defaultRestSeconds,
-  Value<String?> notes,
+  Value<WeightUnit> weightUnit,
+  Value<String?> instructions,
   Value<bool> isCustom,
   Value<int> rowid,
 });
@@ -4068,8 +4135,14 @@ class $$ExercisesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get notes => $composableBuilder(
-    column: $table.notes,
+  ColumnWithTypeConverterFilters<WeightUnit, WeightUnit, String>
+  get weightUnit => $composableBuilder(
+    column: $table.weightUnit,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get instructions => $composableBuilder(
+    column: $table.instructions,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4188,8 +4261,13 @@ class $$ExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get notes => $composableBuilder(
-    column: $table.notes,
+  ColumnOrderings<String> get weightUnit => $composableBuilder(
+    column: $table.weightUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get instructions => $composableBuilder(
+    column: $table.instructions,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4245,8 +4323,16 @@ class $$ExercisesTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get notes =>
-      $composableBuilder(column: $table.notes, builder: (column) => column);
+  GeneratedColumnWithTypeConverter<WeightUnit, String> get weightUnit =>
+      $composableBuilder(
+        column: $table.weightUnit,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<String> get instructions => $composableBuilder(
+    column: $table.instructions,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get isCustom =>
       $composableBuilder(column: $table.isCustom, builder: (column) => column);
@@ -4344,7 +4430,8 @@ class $$ExercisesTableTableManager
                 Value<BodyPart> bodyPart = const Value.absent(),
                 Value<TrackingType> trackingType = const Value.absent(),
                 Value<int?> defaultRestSeconds = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
+                Value<WeightUnit> weightUnit = const Value.absent(),
+                Value<String?> instructions = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExercisesCompanion(
@@ -4358,7 +4445,8 @@ class $$ExercisesTableTableManager
                 bodyPart: bodyPart,
                 trackingType: trackingType,
                 defaultRestSeconds: defaultRestSeconds,
-                notes: notes,
+                weightUnit: weightUnit,
+                instructions: instructions,
                 isCustom: isCustom,
                 rowid: rowid,
               ),
@@ -4374,7 +4462,8 @@ class $$ExercisesTableTableManager
                 required BodyPart bodyPart,
                 required TrackingType trackingType,
                 Value<int?> defaultRestSeconds = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
+                Value<WeightUnit> weightUnit = const Value.absent(),
+                Value<String?> instructions = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExercisesCompanion.insert(
@@ -4388,7 +4477,8 @@ class $$ExercisesTableTableManager
                 bodyPart: bodyPart,
                 trackingType: trackingType,
                 defaultRestSeconds: defaultRestSeconds,
-                notes: notes,
+                weightUnit: weightUnit,
+                instructions: instructions,
                 isCustom: isCustom,
                 rowid: rowid,
               ),

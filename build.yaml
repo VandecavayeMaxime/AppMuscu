@@ -1,0 +1,12 @@
+# Configuration de la génération de code (build_runner).
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # Base suivie par `dart run drift_dev make-migrations` (NF-08) :
+          # structures successives dans drift_schemas/, tests dans test/drift/.
+          databases:
+            app_database: lib/core/database/app_database.dart
+          schema_dir: drift_schemas/
+          test_dir: test/drift/

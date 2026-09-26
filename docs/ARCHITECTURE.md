@@ -49,7 +49,9 @@ lib/
     ├── rest_timer/         # minuteur + notifications (RT)
     ├── templates/          # modèles (TP)
     └── settings/           # réglages (ST)
-test/                       # même arborescence que lib/ (+ helpers/ : base de test en mémoire)
+test/                       # même arborescence que lib/ (+ helpers/ : base de test en mémoire ; drift/ : tests de migration)
+drift_schemas/              # structures successives de la base (générées, à committer)
+build.yaml                  # configuration de Drift (make-migrations)
 ```
 
 **Règles d'architecture**
@@ -69,7 +71,8 @@ Toutes les routes sont déclarées dans `lib/app/router.dart`. Le routeur est fo
 | `/seance/modeles/:id` | Modifier un modèle | Onglet 1 |
 | `/exercices` | Onglet Exercices : bibliothèque | Onglet 2 |
 | `/exercices/nouveau` | Créer un exercice | Onglet 2 |
-| `/exercices/:id` | Modifier un exercice | Onglet 2 |
+| `/exercices/:id` | Fiche exercice : onglets À propos / Historique (EX-07) | Onglet 2 |
+| `/exercices/:id/modifier` | Modifier un exercice perso | Onglet 2 |
 | `/reglages` | Onglet Réglages | Onglet 3 |
 | `/seance-en-cours` | Séance en cours | Plein écran, par-dessus les onglets |
 | `/seance-en-cours/ajouter` | Sélecteur d'exercices (multi-sélection) | Plein écran, renvoie la sélection |
@@ -112,8 +115,9 @@ erDiagram
 | equipment | TEXT | `barbell`, `dumbbell`, `machine`, `cable`, `kettlebell`, `bodyweight`, `band`, `other` |
 | body_part | TEXT | `chest`, `back`, `shoulders`, `biceps`, `triceps`, `forearms`, `abs`, `quads`, `hamstrings`, `glutes`, `calves`, `fullBody`, `cardio`, `other` |
 | tracking_type | TEXT | `weightReps`, `reps`, `duration` |
-| default_rest_seconds | INTEGER NULL | NULL → réglage global |
-| notes | TEXT NULL | |
+| default_rest_seconds | INTEGER NULL | préférence : NULL → réglage global, 0 → désactivé (EX-08) |
+| weight_unit | TEXT | préférence : `kg` (défaut) ou `lb` (EX-08, RG-14). *Ajoutée en v2* |
+| instructions | TEXT NULL | consignes affichées dans la fiche (EX-09). *Colonne `notes` renommée en v2* |
 | is_custom | BOOLEAN | intégré ou créé par l'utilisateur |
 | created_at, updated_at, deleted_at | INTEGER | `deleted_at` = archivé (EX-05) |
 
@@ -199,6 +203,24 @@ ORDER BY position;
 - Au premier plan, l'app vibre elle-même à la fin du repos et n'affiche pas la notification en double. Le mécanisme exact sera tranché au jalon M4.
 - ⚠️ **Android** : permission `POST_NOTIFICATIONS` (Android 13+). Pour une notification à la seconde près, il faut les **alarmes exactes** (`SCHEDULE_EXACT_ALARM`), refusées par défaut à partir d'Android 14 : on renverra l'utilisateur vers le réglage système. Plan B si ce n'est pas assez fiable : un *foreground service* avec une notification de compte à rebours.
 
+### Migrations (NF-08)
+
+La base installée sur le téléphone doit évoluer **sans perte de données** à chaque nouvelle version de l'app. On utilise l'outil officiel de Drift :
+
+1. Modifier `tables.dart`, puis incrémenter `schemaVersion` dans `app_database.dart`.
+2. `dart run build_runner build`, puis `dart run drift_dev make-migrations`. L'outil :
+   - enregistre la nouvelle structure dans `drift_schemas/app_database/drift_schema_vN.json` (à committer) ;
+   - génère `app_database.steps.dart`, dont la fonction `stepByStep(fromXToY: …)` donne accès à chaque version de la structure ;
+   - génère `test/drift/app_database/` : tests qui vérifient que chaque migration aboutit **exactement** à la structure d'une base neuve.
+3. Écrire l'étape `fromXToY` dans `app_database.dart` et compléter le test d'intégrité des données dans `test/drift/app_database/migration_test.dart`.
+
+Configuration dans `build.yaml`. Historique des versions :
+
+| Version | Changement |
+|---|---|
+| v1 | Structure initiale (M1) |
+| v2 | Fiche exercice : `notes` → `instructions`, ajout de `weight_unit`, consignes des 10 exercices intégrés |
+
 ### Bibliothèque initiale (EX-01)
 - `lib/core/database/seed/built_in_exercises.dart` contient les 10 exercices de [SPEC §5.1](SPEC.md#51-bibliothèque-dexercices-ex), insérés au premier lancement (`onCreate`). On a choisi un fichier Dart plutôt que JSON : les valeurs d'enum sont vérifiées à la compilation, et il n'y a aucun fichier à charger. Chaque exercice a un **UUID fixe**, ce qui permet aux versions suivantes d'ajouter ou corriger des exercices intégrés, par une migration, sans créer de doublons.
 
@@ -239,7 +261,7 @@ Chaque jalon se termine par quelque chose de **testable sur le téléphone**. À
 |---|---|---|---|---|
 | **M0 — Setup** ✅ | Installation, `flutter create`, lints, arborescence, thème clair/sombre, 3 onglets vides avec go_router, git | — | Bases de Dart, widgets, `StatelessWidget` / `StatefulWidget`, *hot reload*, `Scaffold`, `NavigationBar`, routes go_router et `StatefulShellRoute` | L'app démarre sur le téléphone avec 3 onglets |
 | **M1 — Données** ✅ | Schéma Drift, index, seed des 10 exercices, repositories, tests unitaires | NF-07, NF-08, RG-* | Classes Dart, `async` / `Future` / `Stream`, SQL avec Drift, génération de code, tests unitaires | Tests verts |
-| **M2 — Exercices** | Liste, recherche, filtres, création / édition / archivage | EX-01 → EX-06 | `ListView`, formulaires et validation, routes avec paramètres (`/exercices/:id`), Riverpod (providers) | Parcourir, chercher et créer des exercices |
+| **M2 — Exercices** ✅ | Liste, recherche, filtres, création / édition / archivage ; fiche exercice (À propos, Historique, préférences kg/lb et repos) ; migration v1 → v2 | EX-01 → EX-10 | `ListView`, formulaires et validation, routes avec paramètres (`/exercices/:id`), Riverpod (providers, `Notifier`, `.family`), onglets (`TabBar`), migrations de base | Parcourir, chercher, créer des exercices, consulter leur fiche |
 | **M3 — Séance** | Séance vide, séries, Précédent, validation, fin, résumé, reprise après arrêt | WO-01 → WO-21 (M/S) | État complexe, flux de la base dans l'UI (`StreamProvider`), `TextEditingController`, gestes (balayage, glisser-déposer), dialogues | 🏋️ **Première vraie séance à la salle** |
 | **M4 — Minuteur** | Ligne de repos sous chaque série, temps de repos par série, notifications, vibration, compteur compact | RT-01 → RT-08 | `Timer`, cycle de vie de l'app (premier / arrière-plan), permissions Android, notifications locales, lien profond vers `/seance-en-cours` | Repos notifié téléphone verrouillé |
 | **M5 — Modèles** | Création, modification, suppression, démarrer depuis un modèle, mise à jour en fin de séance | TP-01 → TP-07 | Réutiliser des widgets, transactions en base, renvoyer un résultat d'un écran | Lancer « Push » en 1 tap |

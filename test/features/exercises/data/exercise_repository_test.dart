@@ -113,13 +113,13 @@ void main() {
         equipment: Equipment.machine,
         bodyPart: BodyPart.glutes,
         trackingType: TrackingType.weightReps,
-        defaultRestSeconds: 120,
+        instructions: 'Dos contre le banc.',
       );
 
       final updated = await repository.findById(created.id);
       expect(updated!.name, 'Hip thrust (machine)');
       expect(updated.equipment, Equipment.machine);
-      expect(updated.defaultRestSeconds, 120);
+      expect(updated.instructions, 'Dos contre le banc.');
     });
 
     test(
@@ -163,6 +163,44 @@ void main() {
       expect(await names(), isNot(contains('Hip thrust')));
       expect((await repository.findById(created.id))!.deletedAt, isNotNull);
       await createHipThrust(); // ne lève pas d'exception
+    });
+  });
+
+  group('fiche (EX-07 à EX-09)', () {
+    test('les exercices intégrés ont des instructions', () async {
+      final bench = await repository.findById(benchPressId);
+
+      expect(bench!.instructions, startsWith('1. '));
+      expect(bench.weightUnit, WeightUnit.kg);
+    });
+
+    test('modifie les préférences, même d’un exercice intégré', () async {
+      await repository.updatePreferences(
+        benchPressId,
+        weightUnit: WeightUnit.lb,
+        defaultRestSeconds: 150,
+      );
+
+      final bench = await repository.findById(benchPressId);
+      expect(bench!.weightUnit, WeightUnit.lb);
+      expect(bench.defaultRestSeconds, 150);
+    });
+
+    test('la fiche se met à jour toute seule', () async {
+      final updates = StreamIterator(repository.watchExercise(benchPressId));
+
+      expect(await updates.moveNext(), isTrue);
+      expect(updates.current!.defaultRestSeconds, isNull);
+
+      await repository.updatePreferences(
+        benchPressId,
+        weightUnit: WeightUnit.kg,
+        defaultRestSeconds: 90,
+      );
+
+      expect(await updates.moveNext(), isTrue);
+      expect(updates.current!.defaultRestSeconds, 90);
+      await updates.cancel();
     });
   });
 }

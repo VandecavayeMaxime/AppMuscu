@@ -133,11 +133,7 @@ class _ExerciseTile extends StatelessWidget {
       subtitle: Text(
         '${exercise.bodyPart.label} · ${exercise.equipment.label}',
       ),
-      // Seuls les exercices perso sont modifiables (EX-05).
-      trailing: exercise.isCustom ? const Icon(Icons.chevron_right) : null,
-      onTap: exercise.isCustom
-          ? () => context.go('/exercices/${exercise.id}')
-          : null,
+      onTap: () => context.go('/exercices/${exercise.id}'),
     );
   }
 }

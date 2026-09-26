@@ -43,11 +43,13 @@ class ExerciseRepository {
   }
 
   /// L'exercice [id], y compris s'il est archivé ; `null` s'il n'existe pas.
-  Future<Exercise?> findById(String id) {
-    return (_db.select(
-      _db.exercises,
-    )..where((e) => e.id.equals(id))).getSingleOrNull();
-  }
+  Future<Exercise?> findById(String id) => _byId(id).getSingleOrNull();
+
+  /// Comme [findById], mais renvoyé à nouveau à chaque modification (fiche).
+  Stream<Exercise?> watchExercise(String id) => _byId(id).watchSingleOrNull();
+
+  SimpleSelectStatement<$ExercisesTable, Exercise> _byId(String id) =>
+      _db.select(_db.exercises)..where((e) => e.id.equals(id));
 
   /// Crée un exercice perso (EX-04).
   ///
@@ -57,8 +59,7 @@ class ExerciseRepository {
     required Equipment equipment,
     required BodyPart bodyPart,
     required TrackingType trackingType,
-    int? defaultRestSeconds,
-    String? notes,
+    String? instructions,
   }) async {
     final cleanName = _cleanName(name);
     await _ensureNameAvailable(cleanName);
@@ -71,22 +72,21 @@ class ExerciseRepository {
             equipment: equipment,
             bodyPart: bodyPart,
             trackingType: trackingType,
-            defaultRestSeconds: Value(defaultRestSeconds),
-            notes: Value(notes),
+            instructions: Value(instructions),
             isCustom: const Value(true),
           ),
         );
   }
 
-  /// Modifie un exercice perso (EX-05). Les exercices intégrés ne sont pas modifiables.
+  /// Modifie la définition d'un exercice perso (EX-05). Celle des exercices
+  /// intégrés n'est pas modifiable.
   Future<void> updateCustom(
     String id, {
     required String name,
     required Equipment equipment,
     required BodyPart bodyPart,
     required TrackingType trackingType,
-    int? defaultRestSeconds,
-    String? notes,
+    String? instructions,
   }) async {
     final cleanName = _cleanName(name);
     await _ensureNameAvailable(cleanName, exceptId: id);
@@ -99,8 +99,22 @@ class ExerciseRepository {
         equipment: Value(equipment),
         bodyPart: Value(bodyPart),
         trackingType: Value(trackingType),
+        instructions: Value(instructions),
+        updatedAt: Value(clock.now()),
+      ),
+    );
+  }
+
+  /// Modifie les préférences d'un exercice, intégré ou perso (EX-08).
+  Future<void> updatePreferences(
+    String id, {
+    required WeightUnit weightUnit,
+    required int? defaultRestSeconds,
+  }) async {
+    await (_db.update(_db.exercises)..where((e) => e.id.equals(id))).write(
+      ExercisesCompanion(
+        weightUnit: Value(weightUnit),
         defaultRestSeconds: Value(defaultRestSeconds),
-        notes: Value(notes),
         updatedAt: Value(clock.now()),
       ),
     );

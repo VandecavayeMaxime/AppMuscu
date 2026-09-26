@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../workout/data/workout_repository.dart';
 import '../data/exercise_repository.dart';
 import '../domain/exercise_enums.dart';
 
@@ -54,8 +55,17 @@ final exerciseListProvider = StreamProvider<List<Exercise>>((ref) {
       );
 });
 
-/// Un exercice précis, pour l'écran de modification.
-final exerciseByIdProvider = FutureProvider.autoDispose
-    .family<Exercise?, String>(
-      (ref, id) => ref.watch(exerciseRepositoryProvider).findById(id),
+/// Un exercice précis, mis à jour en direct (fiche, formulaire).
+///
+/// `.family` : un provider par identifiant ; `.autoDispose` : libéré quand
+/// plus aucun écran ne l'utilise.
+final exerciseProvider = StreamProvider.autoDispose.family<Exercise?, String>(
+  (ref, id) => ref.watch(exerciseRepositoryProvider).watchExercise(id),
+);
+
+/// Historique d'un exercice (onglet Historique de la fiche).
+final exerciseHistoryProvider = StreamProvider.autoDispose
+    .family<List<ExerciseSession>, String>(
+      (ref, id) =>
+          ref.watch(workoutRepositoryProvider).watchExerciseHistory(id),
     );

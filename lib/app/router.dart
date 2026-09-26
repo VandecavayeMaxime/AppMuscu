@@ -5,6 +5,8 @@ import '../features/exercises/presentation/exercise_detail_screen.dart';
 import '../features/exercises/presentation/exercise_form_screen.dart';
 import '../features/exercises/presentation/exercises_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/workout/presentation/active_workout_screen.dart';
+import '../features/workout/presentation/exercise_picker_screen.dart';
 import '../features/workout/presentation/workout_home_screen.dart';
 import 'home_shell.dart';
 
@@ -20,6 +22,26 @@ final routerProvider = Provider<GoRouter>((ref) {
 GoRouter _createRouter() => GoRouter(
   initialLocation: '/seance',
   routes: [
+    // Séance en cours : déclarée hors des onglets, elle s'affiche en plein
+    // écran par-dessus (navigateur racine).
+    GoRoute(
+      path: '/seance-en-cours',
+      builder: (context, state) => const ActiveWorkoutScreen(),
+      routes: [
+        GoRoute(
+          path: 'ajouter',
+          builder: (context, state) => const ExercisePickerScreen(),
+        ),
+        // Fiche d'un exercice ouverte pendant la séance (WO-22).
+        GoRoute(
+          path: 'exercice/:id',
+          builder: (context, state) => ExerciseDetailScreen(
+            exerciseId: state.pathParameters['id']!,
+            allowEditing: false,
+          ),
+        ),
+      ],
+    ),
     // Les 3 onglets. Chaque branche garde sa propre pile d'écrans :
     // on retrouve l'onglet dans l'état où on l'a laissé.
     StatefulShellRoute.indexedStack(

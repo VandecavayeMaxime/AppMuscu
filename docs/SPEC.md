@@ -174,7 +174,7 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | WO-01 | Démarrer une séance vide. Son nom par défaut dépend de l'heure (RG-05) et reste modifiable. | M |
 | WO-02 | Une seule séance en cours à la fois. Si on en démarre une autre, l'app propose : « Reprendre la séance en cours » ou « L'abandonner et démarrer ». | M |
 | WO-03 | Un chronomètre affiche le temps écoulé depuis le début de la séance. | M |
-| WO-04 | Ajouter un ou plusieurs exercices via un sélecteur multi-sélection avec recherche. Chaque exercice ajouté arrive avec 1 série vide. | M |
+| WO-04 | Ajouter un ou plusieurs exercices via un sélecteur multi-sélection avec recherche. Dans le sélecteur, toucher le nom d'un exercice ouvre sa fiche, et la case à cocher le sélectionne ; la sélection est conservée au retour de la fiche. Chaque exercice ajouté arrive avec 1 série vide. | M |
 | WO-05 | Chaque exercice affiche un tableau de séries : Série, Précédent, colonnes du type de suivi, case de validation ✓. Chaque série est suivie de sa ligne de repos (RT-03). | M |
 | WO-06 | La colonne **Précédent** affiche les valeurs de la série de même rang lors de la dernière séance contenant l'exercice (RG-03, RG-04), ou « — » si aucune. Taper dessus recopie ces valeurs dans la série. | M |
 | WO-07 | Les nombres se saisissent au pavé numérique. Le poids accepte les décimales, avec la virgule ou le point. Un champ vide affiche un placeholder grisé (RG-11). | M |
@@ -192,7 +192,7 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | WO-19 | Abandonner la séance (avec confirmation) la supprime définitivement. | M |
 | WO-20 | Réduire la séance en barre persistante (nom, chrono et repos en cours) pour naviguer dans les onglets, puis la rouvrir d'un tap. | S |
 | WO-21 | **Persistance :** chaque modification est enregistrée immédiatement. Si l'app est tuée, on retrouve la séance intacte au redémarrage, avec un bandeau « Séance en cours — Reprendre ». | M |
-| WO-22 | Le menu ⋯ d'un exercice en séance permet d'ouvrir sa fiche (EX-07), pour revoir son historique entre deux séries. | M |
+| WO-22 | Toucher le nom d'un exercice en séance ouvre sa fiche (EX-07), pour revoir son historique entre deux séries. Le menu Modifier / Supprimer y est masqué, pour ne pas quitter la séance par erreur. | M |
 
 ### 5.3 Minuteur de repos (RT)
 

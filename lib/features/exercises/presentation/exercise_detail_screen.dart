@@ -18,9 +18,17 @@ const _restChoices = [0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
 
 /// Fiche d'un exercice : onglets « À propos » et « Historique » (EX-07).
 class ExerciseDetailScreen extends ConsumerWidget {
-  const ExerciseDetailScreen({super.key, required this.exerciseId});
+  const ExerciseDetailScreen({
+    super.key,
+    required this.exerciseId,
+    this.allowEditing = true,
+  });
 
   final String exerciseId;
+
+  /// `false` quand la fiche est ouverte depuis une séance (WO-22) : pas de
+  /// menu Modifier / Supprimer, pour ne pas quitter la séance par erreur.
+  final bool allowEditing;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,7 +44,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
                     title: 'Exercice introuvable',
                   ),
                 )
-              : _ExerciseDetail(exercise),
+              : _ExerciseDetail(exercise, allowEditing: allowEditing),
           loading: () =>
               const Scaffold(body: Center(child: CircularProgressIndicator())),
           error: (error, _) => Scaffold(
@@ -54,9 +62,10 @@ class ExerciseDetailScreen extends ConsumerWidget {
 enum _MenuAction { edit, delete }
 
 class _ExerciseDetail extends ConsumerWidget {
-  const _ExerciseDetail(this.exercise);
+  const _ExerciseDetail(this.exercise, {required this.allowEditing});
 
   final Exercise exercise;
+  final bool allowEditing;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -67,7 +76,7 @@ class _ExerciseDetail extends ConsumerWidget {
           title: Text(exercise.name),
           actions: [
             // Modifier / supprimer : exercices perso uniquement (EX-05).
-            if (exercise.isCustom)
+            if (exercise.isCustom && allowEditing)
               PopupMenuButton<_MenuAction>(
                 tooltip: "Plus d'options",
                 onSelected: (action) {

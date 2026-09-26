@@ -1,6 +1,8 @@
 import 'package:app_muscu/core/database/app_database.dart';
 import 'package:app_muscu/features/workout/data/workout_repository.dart';
 import 'package:app_muscu/features/workout/domain/set_type.dart';
+import 'package:clock/clock.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/test_database.dart';
@@ -163,6 +165,132 @@ void main() {
 
       expect(sessions, hasLength(1));
       expect(sessions.single.sets.map(describe), ['70.0×10']);
+    });
+  });
+
+  group('séance en cours', () {
+    Future<WorkoutDetails> details(String workoutId) async =>
+        (await repository.watchWorkoutDetails(workoutId).first)!;
+
+    test('démarre une séance nommée selon l’heure (WO-01, RG-05)', () async {
+      final workout = await withClock(
+        Clock.fixed(DateTime(2026, 9, 26, 18, 30)),
+        repository.startWorkout,
+      );
+
+      expect(workout.name, 'Séance du soir');
+      expect(workout.endedAt, isNull);
+      expect((await repository.watchActiveWorkout().first)?.id, workout.id);
+    });
+
+    test('refuse une deuxième séance en cours (WO-02)', () async {
+      await repository.startWorkout();
+
+      await expectLater(repository.startWorkout(), throwsA(isA<Exception>()));
+    });
+
+    test('ajoute des exercices à la suite, chacun avec une série vide '
+        '(WO-04)', () async {
+      final workout = await repository.startWorkout();
+
+      await repository.addExercises(workout.id, [benchPressId]);
+      await repository.addExercises(workout.id, [squatId, pullUpId]);
+
+      final exercises = (await details(workout.id)).exercises;
+      expect(exercises.map((e) => e.exercise.name), [
+        'Développé couché (barre)',
+        'Squat (barre)',
+        'Tractions',
+      ]);
+      expect(exercises.map((e) => e.entry.position), [0, 1, 2]);
+      for (final exercise in exercises) {
+        expect(exercise.sets, hasLength(1));
+        expect(exercise.sets.single.completedAt, isNull);
+      }
+    });
+
+    test('une nouvelle série reprend le repos de la précédente (WO-10, '
+        'RG-12)', () async {
+      final workout = await repository.startWorkout();
+      await repository.addExercises(workout.id, [benchPressId]);
+      final entry = (await details(workout.id)).exercises.single;
+      await (db.update(db.workoutSets)
+            ..where((s) => s.id.equals(entry.sets.single.id)))
+          .write(const WorkoutSetsCompanion(restSeconds: Value(90)));
+
+      await repository.addSet(entry.entry.id);
+
+      final sets = (await details(workout.id)).exercises.single.sets;
+      expect(sets.map((s) => s.position), [0, 1]);
+      expect(sets.map((s) => s.restSeconds), [90, 90]);
+    });
+
+    test('saisit, valide puis dévalide une série (WO-07 à WO-09)', () async {
+      final workout = await repository.startWorkout();
+      await repository.addExercises(workout.id, [benchPressId]);
+      Future<WorkoutSet> theSet() async =>
+          (await details(workout.id)).exercises.single.sets.single;
+      final setId = (await theSet()).id;
+
+      await repository.updateSet(
+        setId,
+        weightKg: const Value(80),
+        reps: const Value(8),
+      );
+      expect(describe(await theSet()), '80.0×8');
+      expect((await theSet()).completedAt, isNull);
+
+      await repository.completeSet(setId, weightKg: 82.5, reps: 6);
+      expect(describe(await theSet()), '82.5×6');
+      expect((await theSet()).completedAt, isNotNull);
+
+      await repository.uncompleteSet(setId);
+      expect((await theSet()).completedAt, isNull);
+      expect(describe(await theSet()), '82.5×6');
+    });
+
+    test('terminer supprime les séries non validées et les exercices vides, '
+        'puis alimente « Précédent »', () async {
+      final workout = await repository.startWorkout();
+      await repository.addExercises(workout.id, [benchPressId, squatId]);
+      final bench = (await details(workout.id)).exercises.first;
+      await repository.completeSet(bench.sets.single.id, weightKg: 80, reps: 8);
+      await repository.addSet(bench.entry.id); // restera vide
+
+      await repository.finishWorkout(workout.id);
+
+      final finished = await details(workout.id);
+      expect(finished.workout.endedAt, isNotNull);
+      expect(finished.exercises.map((e) => e.exercise.name), [
+        'Développé couché (barre)',
+      ]);
+      expect(finished.exercises.single.sets.map(describe), ['80.0×8']);
+      expect(await repository.watchActiveWorkout().first, isNull);
+      expect((await repository.previousSets(benchPressId)).map(describe), [
+        '80.0×8',
+      ]);
+    });
+
+    test('refuse de terminer sans série validée (RG-08)', () async {
+      final workout = await repository.startWorkout();
+      await repository.addExercises(workout.id, [benchPressId]);
+
+      await expectLater(
+        repository.finishWorkout(workout.id),
+        throwsA(isA<NoCompletedSetException>()),
+      );
+      expect(await repository.watchActiveWorkout().first, isNotNull);
+    });
+
+    test('abandonner efface la séance et tout son contenu (WO-19)', () async {
+      final workout = await repository.startWorkout();
+      await repository.addExercises(workout.id, [benchPressId]);
+
+      await repository.discardWorkout(workout.id);
+
+      expect(await repository.watchWorkoutDetails(workout.id).first, isNull);
+      expect(await db.select(db.workoutExercises).get(), isEmpty);
+      expect(await db.select(db.workoutSets).get(), isEmpty);
     });
   });
 }

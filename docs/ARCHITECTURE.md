@@ -76,6 +76,7 @@ Toutes les routes sont déclarées dans `lib/app/router.dart`. Le routeur est fo
 | `/reglages` | Onglet Réglages | Onglet 3 |
 | `/seance-en-cours` | Séance en cours | Plein écran, par-dessus les onglets |
 | `/seance-en-cours/ajouter` | Sélecteur d'exercices (multi-sélection) | Plein écran, renvoie la sélection |
+| `/seance-en-cours/exercice/:id` | Fiche d'un exercice ouverte pendant la séance (WO-22), sans menu Modifier / Supprimer | Plein écran |
 | `/resume/:workoutId` | Résumé de fin de séance | Plein écran |
 
 - Les 3 onglets sont les branches d'un `StatefulShellRoute` : chaque onglet garde ses écrans ouverts quand on passe à un autre et qu'on revient.
@@ -240,7 +241,9 @@ Configuration dans `build.yaml`. Historique des versions :
 - l'app doit être **démontée à l'intérieur du test**, suivi d'un `pump(Duration.zero)`. Drift ferme ses flux avec un minuteur de durée nulle, sinon le test échoue avec « A Timer is still pending » ;
 - ne jamais appeler `tester.pumpWidget` dans un `addTearDown` : le test reste bloqué ;
 - une liste n'affiche que ses éléments visibles, donc l'écran de test fait 360 × 1200 dp ;
-- lancer les tests avec `flutter test --timeout 60s`, pour qu'un test bloqué échoue vite au lieu d'attendre 10 minutes.
+- lancer les tests avec `flutter test --timeout 60s`, pour qu'un test bloqué échoue vite au lieu d'attendre 10 minutes ;
+- les chronomètres passent par `clockTickProvider`, que `testApp()` remplace par un flux immobile : sinon `pumpAndSettle` ne se termine jamais ;
+- `tester.pageBack()` cherche le bouton retour de `flutter/material`, pas celui de `material_ui` : il faut utiliser `tester.tap(find.byType(BackButton))`.
 | Manuel (téléphone) | Minuteur écran verrouillé, app tuée en pleine séance, reprise | Checklist à chaque jalon |
 
 ## 6. Environnement de développement (Windows)

@@ -1,6 +1,7 @@
 import 'package:app_muscu/app/app.dart';
 import 'package:app_muscu/core/database/app_database.dart';
 import 'package:app_muscu/core/database/database_provider.dart';
+import 'package:app_muscu/core/utils/clock_tick.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,7 +24,12 @@ void testApp(
     await setUp?.call(db);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          // Chronomètres figés : un flux qui avance chaque seconde empêcherait
+          // `pumpAndSettle` de se terminer.
+          clockTickProvider.overrideWith((ref) => const Stream.empty()),
+        ],
         child: const AppMuscu(),
       ),
     );

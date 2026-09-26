@@ -4,46 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../domain/set_rules.dart';
+import '../domain/workout_details.dart';
 import '../domain/workout_naming.dart';
+
+// Les écrans qui utilisent le repository ont aussi besoin de ces modèles.
+export '../domain/workout_details.dart';
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>(
   (ref) => WorkoutRepository(ref.watch(appDatabaseProvider)),
 );
-
-/// Une séance où un exercice a été fait (onglet Historique de la fiche, EX-07).
-class ExerciseSession {
-  ExerciseSession({required this.workoutName, required this.date});
-
-  final String workoutName;
-  final DateTime date;
-
-  /// Séries validées de l'exercice dans cette séance, dans l'ordre.
-  final List<WorkoutSet> sets = [];
-}
-
-/// Une séance avec tout son contenu, pour l'écran « Séance en cours ».
-class WorkoutDetails {
-  WorkoutDetails(this.workout);
-
-  final Workout workout;
-
-  /// Exercices de la séance, dans l'ordre.
-  final List<WorkoutExerciseDetails> exercises = [];
-}
-
-/// Un exercice dans une séance, avec ses séries.
-class WorkoutExerciseDetails {
-  WorkoutExerciseDetails({required this.entry, required this.exercise});
-
-  /// La ligne de la table workout_exercises (position, notes…).
-  final WorkoutExercise entry;
-
-  /// L'exercice de la bibliothèque (nom, type de suivi, unité…).
-  final Exercise exercise;
-
-  /// Séries, dans l'ordre.
-  final List<WorkoutSet> sets = [];
-}
 
 /// Terminer une séance sans aucune série validée est interdit (RG-08).
 class NoCompletedSetException implements Exception {
@@ -70,46 +40,53 @@ class WorkoutRepository {
   }
 
   /// Une séance avec ses exercices et ses séries, mis à jour en direct.
-  Stream<WorkoutDetails?> watchWorkoutDetails(String workoutId) {
+  Stream<WorkoutDetails?> watchWorkoutDetails(String workoutId) =>
+      _detailsQuery(workoutId).watch().map(_toDetails);
+
+  /// Comme [watchWorkoutDetails], en une seule lecture.
+  Future<WorkoutDetails?> getWorkoutDetails(String workoutId) async =>
+      _toDetails(await _detailsQuery(workoutId).get());
+
+  // Jointures « externes » : la séance est renvoyée même sans exercice, et un
+  // exercice même sans série. Une ligne SQL par série.
+  JoinedSelectStatement<HasResultSet, dynamic> _detailsQuery(String workoutId) {
     final workout = _db.workouts;
     final entry = _db.workoutExercises;
-    final exercise = _db.exercises;
     final set = _db.workoutSets;
+    return _db.select(workout).join([
+        leftOuterJoin(entry, entry.workoutId.equalsExp(workout.id)),
+        leftOuterJoin(
+          _db.exercises,
+          _db.exercises.id.equalsExp(entry.exerciseId),
+        ),
+        leftOuterJoin(set, set.workoutExerciseId.equalsExp(entry.id)),
+      ])
+      ..where(workout.id.equals(workoutId))
+      ..orderBy([
+        OrderingTerm.asc(entry.position),
+        OrderingTerm.asc(set.position),
+      ]);
+  }
 
-    // Jointures « externes » : la séance est renvoyée même sans exercice,
-    // et un exercice même sans série.
-    final query =
-        _db.select(workout).join([
-            leftOuterJoin(entry, entry.workoutId.equalsExp(workout.id)),
-            leftOuterJoin(exercise, exercise.id.equalsExp(entry.exerciseId)),
-            leftOuterJoin(set, set.workoutExerciseId.equalsExp(entry.id)),
-          ])
-          ..where(workout.id.equals(workoutId))
-          ..orderBy([
-            OrderingTerm.asc(entry.position),
-            OrderingTerm.asc(set.position),
-          ]);
-
-    return query.watch().map((rows) {
-      if (rows.isEmpty) return null;
-      final details = WorkoutDetails(rows.first.readTable(workout));
-      final byEntry = <String, WorkoutExerciseDetails>{};
-      for (final row in rows) {
-        final currentEntry = row.readTableOrNull(entry);
-        if (currentEntry == null) continue;
-        final item = byEntry.putIfAbsent(
-          currentEntry.id,
-          () => WorkoutExerciseDetails(
-            entry: currentEntry,
-            exercise: row.readTable(exercise),
-          ),
-        );
-        final currentSet = row.readTableOrNull(set);
-        if (currentSet != null) item.sets.add(currentSet);
-      }
-      details.exercises.addAll(byEntry.values);
-      return details;
-    });
+  WorkoutDetails? _toDetails(List<TypedResult> rows) {
+    if (rows.isEmpty) return null;
+    final details = WorkoutDetails(rows.first.readTable(_db.workouts));
+    final byEntry = <String, WorkoutExerciseDetails>{};
+    for (final row in rows) {
+      final entry = row.readTableOrNull(_db.workoutExercises);
+      if (entry == null) continue;
+      final item = byEntry.putIfAbsent(
+        entry.id,
+        () => WorkoutExerciseDetails(
+          entry: entry,
+          exercise: row.readTable(_db.exercises),
+        ),
+      );
+      final set = row.readTableOrNull(_db.workoutSets);
+      if (set != null) item.sets.add(set);
+    }
+    details.exercises.addAll(byEntry.values);
+    return details;
   }
 
   /// Historique d'un exercice (EX-10) : un élément par séance terminée où il
@@ -162,8 +139,13 @@ class WorkoutRepository {
   /// (RG-03, WO-06). Liste vide si l'exercice n'a jamais été fait.
   ///
   /// Séance de référence (RG-04) : la plus récente, terminée, non supprimée,
-  /// avec au moins une série validée de cet exercice.
-  Future<List<WorkoutSet>> previousSets(String exerciseId) async {
+  /// avec au moins une série validée de cet exercice. Avec [startedBefore],
+  /// seules les séances commencées avant cette date comptent : c'est ce qui
+  /// permet au résumé de comparer une séance à la précédente (WO-18).
+  Future<List<WorkoutSet>> previousSets(
+    String exerciseId, {
+    DateTime? startedBefore,
+  }) async {
     final exercise = _db.workoutExercises;
     final workout = _db.workouts;
     final set = _db.workoutSets;
@@ -184,6 +166,9 @@ class WorkoutRepository {
                 exercise.exerciseId.equals(exerciseId) &
                     workout.endedAt.isNotNull() &
                     workout.deletedAt.isNull() &
+                    (startedBefore == null
+                        ? const Constant(true)
+                        : workout.startedAt.isSmallerThanValue(startedBefore)) &
                     hasCompletedSet,
               )
               ..orderBy([
@@ -218,13 +203,44 @@ class WorkoutRepository {
         );
   }
 
-  /// Termine la séance : supprime les séries non validées, puis les
+  /// Renomme la séance (WO-01).
+  Future<void> renameWorkout(String workoutId, String name) {
+    return (_db.update(
+      _db.workouts,
+    )..where((w) => w.id.equals(workoutId))).write(
+      WorkoutsCompanion(
+        name: Value(name.trim()),
+        updatedAt: Value(clock.now()),
+      ),
+    );
+  }
+
+  /// Termine la séance (WO-17) : avec [validateReadySets], valide d'abord les
+  /// séries non validées dont toutes les valeurs sont saisies (« Tout
+  /// valider »). Supprime ensuite les séries non validées restantes, puis les
   /// exercices restés vides, et enregistre l'heure de fin.
   ///
   /// Lève [NoCompletedSetException] s'il n'y a aucune série validée (RG-08).
-  /// (Version simple ; le choix « Tout valider / Supprimer » arrive au M3b, WO-17.)
-  Future<void> finishWorkout(String workoutId) {
+  Future<void> finishWorkout(
+    String workoutId, {
+    bool validateReadySets = false,
+  }) {
     return _db.transaction(() async {
+      if (validateReadySets) {
+        final details = await getWorkoutDetails(workoutId);
+        final now = clock.now();
+        for (final item in details?.exercises ?? <WorkoutExerciseDetails>[]) {
+          for (final set in item.sets) {
+            if (set.completedAt == null &&
+                isSetReady(set, item.exercise.trackingType)) {
+              await (_db.update(_db.workoutSets)
+                    ..where((s) => s.id.equals(set.id)))
+                  .write(WorkoutSetsCompanion(completedAt: Value(now)));
+            }
+          }
+        }
+      }
+
       final entryIds = _db.selectOnly(_db.workoutExercises)
         ..addColumns([_db.workoutExercises.id])
         ..where(_db.workoutExercises.workoutId.equals(workoutId));
@@ -369,6 +385,36 @@ class WorkoutRepository {
   /// Dévalide une série (WO-09).
   Future<void> uncompleteSet(String setId) =>
       updateSet(setId, completedAt: const Value(null));
+
+  /// Supprime une série (WO-11). Les numéros des suivantes se décalent tout
+  /// seuls, car ils sont calculés à l'affichage (RG-02).
+  Future<void> deleteSet(String setId) async {
+    // Horodatage avant la suppression : ensuite, la série n'existe plus.
+    await _touchWorkoutOfSet(setId);
+    await (_db.delete(_db.workoutSets)..where((s) => s.id.equals(setId))).go();
+  }
+
+  /// Note d'un exercice pour cette séance (WO-13) ; `null` ou vide = aucune.
+  Future<void> updateExerciseNote(
+    String workoutExerciseId,
+    String? note,
+  ) async {
+    final text = note?.trim() ?? '';
+    await (_db.update(
+      _db.workoutExercises,
+    )..where((e) => e.id.equals(workoutExerciseId))).write(
+      WorkoutExercisesCompanion(notes: Value(text.isEmpty ? null : text)),
+    );
+    await _touchWorkoutOfEntry(workoutExerciseId);
+  }
+
+  /// Retire un exercice de la séance, avec ses séries (WO-13).
+  Future<void> removeExercise(String workoutExerciseId) async {
+    await _touchWorkoutOfEntry(workoutExerciseId);
+    await (_db.delete(
+      _db.workoutExercises,
+    )..where((e) => e.id.equals(workoutExerciseId))).go();
+  }
 
   // ─── Horodatage de la séance (sync future) ─────────────────────────────────
 

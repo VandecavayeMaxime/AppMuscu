@@ -8,6 +8,7 @@ import '../features/settings/presentation/settings_screen.dart';
 import '../features/workout/presentation/active_workout_screen.dart';
 import '../features/workout/presentation/exercise_picker_screen.dart';
 import '../features/workout/presentation/workout_home_screen.dart';
+import '../features/workout/presentation/workout_summary_screen.dart';
 import 'home_shell.dart';
 
 /// Le routeur de l'app. Fourni par Riverpod pour qu'il soit créé une seule
@@ -41,6 +42,12 @@ GoRouter _createRouter() => GoRouter(
           ),
         ),
       ],
+    ),
+    // Résumé de fin de séance (WO-18), en plein écran lui aussi.
+    GoRoute(
+      path: '/resume/:workoutId',
+      builder: (context, state) =>
+          WorkoutSummaryScreen(workoutId: state.pathParameters['workoutId']!),
     ),
     // Les 3 onglets. Chaque branche garde sa propre pile d'écrans :
     // on retrouve l'onglet dans l'état où on l'a laissé.

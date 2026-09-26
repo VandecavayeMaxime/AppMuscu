@@ -150,7 +150,7 @@ erDiagram
 | id | TEXT PK | |
 | workout_exercise_id | TEXT → workout_exercises | |
 | position | INTEGER | ordre dans l'exercice |
-| set_type | TEXT | `normal`, `warmup`, `dropset`, `failure` |
+| set_type | TEXT | toujours `normal` depuis le retrait des types de série (SPEC D12). Les valeurs `warmup`, `dropset` et `failure` restent prévues dans l'enum |
 | weight_kg | REAL NULL | |
 | reps | INTEGER NULL | |
 | duration_seconds | INTEGER NULL | |
@@ -265,7 +265,7 @@ Chaque jalon se termine par quelque chose de **testable sur le téléphone**. À
 | **M0 — Setup** ✅ | Installation, `flutter create`, lints, arborescence, thème clair/sombre, 3 onglets vides avec go_router, git | — | Bases de Dart, widgets, `StatelessWidget` / `StatefulWidget`, *hot reload*, `Scaffold`, `NavigationBar`, routes go_router et `StatefulShellRoute` | L'app démarre sur le téléphone avec 3 onglets |
 | **M1 — Données** ✅ | Schéma Drift, index, seed des 10 exercices, repositories, tests unitaires | NF-07, NF-08, RG-* | Classes Dart, `async` / `Future` / `Stream`, SQL avec Drift, génération de code, tests unitaires | Tests verts |
 | **M2 — Exercices** ✅ | Liste, recherche, filtres, création / édition / archivage ; fiche exercice (À propos, Historique, préférences kg/lb et repos) ; migration v1 → v2 | EX-01 → EX-10 | `ListView`, formulaires et validation, routes avec paramètres (`/exercices/:id`), Riverpod (providers, `Notifier`, `.family`), onglets (`TabBar`), migrations de base | Parcourir, chercher, créer des exercices, consulter leur fiche |
-| **M3 — Séance** | Séance vide, séries, Précédent, validation, fin, résumé, reprise après arrêt | WO-01 → WO-21 (M/S) | État complexe, flux de la base dans l'UI (`StreamProvider`), `TextEditingController`, gestes (balayage, glisser-déposer), dialogues | 🏋️ **Première vraie séance à la salle** |
+| **M3 — Séance** ✅ (sauf WO-15/16, reportés ; WO-20 au M6) | Séance vide, séries, Précédent, validation, fin, résumé, reprise après arrêt | WO-01 → WO-21 (M/S) | État complexe, flux de la base dans l'UI (`StreamProvider`), `TextEditingController`, gestes (balayage, glisser-déposer), dialogues | 🏋️ **Première vraie séance à la salle** |
 | **M4 — Minuteur** | Ligne de repos sous chaque série, temps de repos par série, notifications, vibration, compteur compact | RT-01 → RT-08 | `Timer`, cycle de vie de l'app (premier / arrière-plan), permissions Android, notifications locales, lien profond vers `/seance-en-cours` | Repos notifié téléphone verrouillé |
 | **M5 — Modèles** | Création, modification, suppression, démarrer depuis un modèle, mise à jour en fin de séance | TP-01 → TP-07 | Réutiliser des widgets, transactions en base, renvoyer un résultat d'un écran | Lancer « Push » en 1 tap |
 | **M6 — Réglages et finitions** | Réglages, séance réduite, ergonomie, performance, APK release | ST-*, WO-20, NF-03 → NF-05 | Thèmes, préférences, compilation release et signature d'APK | APK installé pour un usage quotidien |

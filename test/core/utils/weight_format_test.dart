@@ -20,4 +20,11 @@ void main() {
       expect(formatWeight(100, WeightUnit.lb), '220,46');
     });
   });
+
+  test('formatVolume arrondit et sépare les milliers', () {
+    expect(formatVolume(0), '0');
+    expect(formatVolume(900), '900');
+    expect(formatVolume(4250.5), '4 251');
+    expect(formatVolume(1234567), '1 234 567');
+  });
 }

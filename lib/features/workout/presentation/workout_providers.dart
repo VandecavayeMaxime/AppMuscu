@@ -21,3 +21,12 @@ final previousSetsProvider = FutureProvider.autoDispose
       (ref, exerciseId) =>
           ref.watch(workoutRepositoryProvider).previousSets(exerciseId),
     );
+
+/// Séries de la dernière séance contenant l'exercice, commencée avant une
+/// date donnée : sert à comparer une séance terminée à la précédente (WO-18).
+final previousSetsBeforeProvider = FutureProvider.autoDispose
+    .family<List<WorkoutSet>, ({String exerciseId, DateTime startedBefore})>(
+      (ref, key) => ref
+          .watch(workoutRepositoryProvider)
+          .previousSets(key.exerciseId, startedBefore: key.startedBefore),
+    );

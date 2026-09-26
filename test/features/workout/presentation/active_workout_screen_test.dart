@@ -142,6 +142,9 @@ void main() {
     await tester.tap(inDialog('Terminer'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Séance terminée'), findsOneWidget); // résumé
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
     expect(find.text('Démarrer une séance vide'), findsOneWidget);
 
     await tester.tap(tab('Exercices'));
@@ -158,22 +161,207 @@ void main() {
     ); // série vide supprimée
   });
 
-  testApp('refuse de terminer sans série validée', (tester) async {
-    await startWorkout(tester);
-    await addExercises(tester, ['Squat (barre)']);
+  group('terminer (WO-17, WO-18)', () {
+    Future<void> tapFinish(WidgetTester tester) async {
+      await tester.tap(find.text('Terminer'));
+      await tester.pumpAndSettle();
+    }
 
-    await tester.tap(find.text('Terminer'));
-    await tester.pumpAndSettle();
-    await tester.tap(inDialog('Terminer'));
-    await tester.pumpAndSettle();
+    /// Squat : 1re série 100 × 5 validée, 2e série 100 × 4 remplie mais pas
+    /// validée.
+    Future<void> oneValidatedOneReady(WidgetTester tester) async {
+      await startWorkout(tester);
+      await addExercises(tester, ['Squat (barre)']);
+      await tester.enterText(field(0), '100');
+      await tester.enterText(field(1), '5');
+      await validateSet(tester);
+      await tester.tap(find.text('Ajouter une série'));
+      await tester.pumpAndSettle();
+      await tester.enterText(field(2), '100');
+      await tester.enterText(field(3), '4');
+      await tester.pump();
+    }
 
-    expect(
-      find.text(
-        'Valide au moins une série pour terminer, ou annule la séance.',
-      ),
-      findsOneWidget,
+    /// La case du résumé intitulée [label] affiche [value].
+    Finder stat(String label, String value) => find.descendant(
+      of: find.ancestor(of: find.text(label), matching: find.byType(Card)),
+      matching: find.text(value),
     );
-    expect(find.text('Terminer'), findsOneWidget); // toujours sur la séance
+
+    testApp('sans série validée : propose d’abandonner la séance', (
+      tester,
+    ) async {
+      await startWorkout(tester);
+      await addExercises(tester, ['Squat (barre)']);
+
+      await tapFinish(tester);
+      expect(find.text('Aucune série validée'), findsOneWidget);
+
+      await tester.tap(inDialog('Continuer la séance'));
+      await tester.pumpAndSettle();
+      expect(find.text('Terminer'), findsOneWidget);
+
+      await tapFinish(tester);
+      await tester.tap(inDialog('Abandonner'));
+      await tester.pumpAndSettle();
+      expect(find.text('Démarrer une séance vide'), findsOneWidget);
+    });
+
+    testApp('séries inachevées : « Compléter »', (tester) async {
+      await oneValidatedOneReady(tester);
+
+      await tapFinish(tester);
+      expect(
+        find.text('1 série est remplie mais pas validée.'),
+        findsOneWidget,
+      );
+      await tester.tap(inDialog('Compléter'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Séance terminée'), findsOneWidget);
+      expect(stat('Séries', '2'), findsOneWidget);
+    });
+
+    testApp('séries inachevées : « Jeter »', (tester) async {
+      await oneValidatedOneReady(tester);
+
+      await tapFinish(tester);
+      await tester.tap(inDialog('Jeter'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Séance terminée'), findsOneWidget);
+      expect(stat('Séries', '1'), findsOneWidget);
+    });
+
+    testApp('sans série validée mais avec des séries remplies : pas de '
+        '« Jeter »', (tester) async {
+      await startWorkout(tester);
+      await addExercises(tester, ['Squat (barre)']);
+      await tester.enterText(field(0), '100');
+      await tester.enterText(field(1), '5');
+      await tester.pump();
+
+      await tapFinish(tester);
+
+      expect(inDialog('Jeter'), findsNothing);
+      expect(inDialog('Compléter'), findsOneWidget);
+    });
+
+    testApp('le résumé affiche les chiffres de la séance', (tester) async {
+      await oneValidatedOneReady(tester);
+      await tapFinish(tester);
+      await tester.tap(inDialog('Compléter'));
+      await tester.pumpAndSettle();
+
+      expect(stat('Exercices', '1'), findsOneWidget);
+      expect(stat('Séries', '2'), findsOneWidget);
+      // Volume : 100 × 5 + 100 × 4 = 900 kg
+      expect(stat('Volume', '900 kg'), findsOneWidget);
+      expect(find.text('Squat (barre)'), findsOneWidget);
+      expect(find.text('100 kg × 5'), findsOneWidget);
+      expect(find.text('100 kg × 4'), findsOneWidget);
+      expect(find.textContaining(' → '), findsOneWidget); // horaires
+      expect(find.text('Première fois avec cet exercice'), findsOneWidget);
+
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.text('Démarrer une séance vide'), findsOneWidget);
+    });
+
+    testApp(
+      'le résumé compare chaque exercice à la dernière fois',
+      setUp: (db) => addWorkout(
+        db,
+        exerciseId: squatId,
+        day: DateTime(2026, 9, 21, 18),
+        sets: [const TestSet(95, 5), const TestSet(95, 5)],
+      ),
+      (tester) async {
+        await oneValidatedOneReady(tester);
+        await tapFinish(tester);
+        await tester.tap(inDialog('Compléter'));
+        await tester.pumpAndSettle();
+
+        // Volume : 900 kg contre 950 kg la dernière fois → en baisse.
+        expect(find.text('−50 kg'), findsOneWidget);
+        expect(find.byIcon(Icons.arrow_downward), findsOneWidget);
+        // Meilleure série : 100 × 5 bat 95 × 5 → en hausse.
+        expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+        expect(find.text('Dernière fois : 95 kg × 5'), findsOneWidget);
+      },
+    );
+  });
+
+  group('séries et exercices (WO-11 à WO-13, WO-01)', () {
+    Future<void> squatWithTwoSets(WidgetTester tester) async {
+      await startWorkout(tester);
+      await addExercises(tester, ['Squat (barre)']);
+      await tester.tap(find.text('Ajouter une série'));
+      await tester.pumpAndSettle();
+    }
+
+    testApp('balayer une série vers la gauche la supprime', (tester) async {
+      await squatWithTwoSets(tester);
+
+      // Geste parti de la colonne « Précédent » (« — ») : sur un champ de
+      // saisie, le glissement servirait à sélectionner du texte.
+      await tester.drag(find.text('—').first, const Offset(-600, 0));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dismissible), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('2'), findsNothing);
+    });
+
+    testApp('ajoute une note à un exercice, puis le retire', (tester) async {
+      await startWorkout(tester);
+      await addExercises(tester, ['Squat (barre)', 'Tractions']);
+
+      await tester.tap(find.byTooltip("Options de l'exercice").first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ajouter une note'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'Pieds un peu plus écartés',
+      );
+      await tester.tap(inDialog('Enregistrer'));
+      await tester.pumpAndSettle();
+      expect(find.text('Pieds un peu plus écartés'), findsOneWidget);
+
+      await tester.tap(find.byTooltip("Options de l'exercice").first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Retirer de la séance'));
+      await tester.pumpAndSettle();
+      await tester.tap(inDialog('Retirer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Squat (barre)'), findsNothing);
+      expect(find.text('Tractions'), findsOneWidget);
+    });
+
+    testApp('toucher le nom de la séance permet de la renommer', (
+      tester,
+    ) async {
+      await startWorkout(tester);
+
+      await tester.tap(find.textContaining('Séance d'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'Push',
+      );
+      await tester.tap(inDialog('Enregistrer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Push'), findsOneWidget);
+    });
   });
 
   testApp('annuler la séance la supprime', (tester) async {

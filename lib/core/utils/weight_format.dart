@@ -11,3 +11,14 @@ String formatWeight(double kg, WeightUnit unit) {
       .replaceFirst(RegExp(r'\.?0+$'), '')
       .replaceAll('.', ',');
 }
+
+/// Volume arrondi au kg, avec espace entre les milliers : 4250.5 → `'4 251'`.
+String formatVolume(double kg) {
+  final digits = kg.round().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(' ');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}

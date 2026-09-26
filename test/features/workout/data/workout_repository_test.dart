@@ -85,6 +85,19 @@ void main() {
       },
     );
 
+    test('avec startedBefore : ignore les séances commencées à partir de '
+        'cette date (comparaison du résumé)', () async {
+      await addWorkout(db, day: monday, sets: [const TestSet(70, 10)]);
+      await addWorkout(db, day: wednesday, sets: [const TestSet(80, 8)]);
+
+      final sets = await repository.previousSets(
+        benchPressId,
+        startedBefore: wednesday,
+      );
+
+      expect(sets.map(describe), ['70.0×10']);
+    });
+
     test('ne mélange pas les exercices', () async {
       await addWorkout(db, day: monday, sets: [const TestSet(70, 10)]);
       await addWorkout(
@@ -281,6 +294,67 @@ void main() {
       );
       expect(await repository.watchActiveWorkout().first, isNotNull);
     });
+
+    test('« Tout valider » valide les séries complètes et supprime les '
+        'séries partielles ou vides (WO-17)', () async {
+      final workout = await repository.startWorkout();
+      await repository.addExercises(workout.id, [benchPressId]);
+      final entry = (await details(workout.id)).exercises.single;
+      final first = entry.sets.single.id;
+      await repository.updateSet(
+        first,
+        weightKg: const Value(80),
+        reps: const Value(8),
+      );
+      await repository.addSet(entry.entry.id);
+      await repository.addSet(entry.entry.id);
+      final sets = (await details(workout.id)).exercises.single.sets;
+      await repository.updateSet(sets[1].id, weightKg: const Value(80));
+
+      await repository.finishWorkout(workout.id, validateReadySets: true);
+
+      final finished = (await details(workout.id)).exercises.single.sets;
+      expect(finished.map(describe), ['80.0×8']);
+      expect(finished.single.completedAt, isNotNull);
+    });
+
+    test('renomme la séance (WO-01)', () async {
+      final workout = await repository.startWorkout();
+
+      await repository.renameWorkout(workout.id, '  Push  ');
+
+      expect((await details(workout.id)).workout.name, 'Push');
+    });
+
+    test(
+      'suppression de série, note et retrait d’exercice (WO-11, WO-13)',
+      () async {
+        final workout = await repository.startWorkout();
+        await repository.addExercises(workout.id, [benchPressId, squatId]);
+        final bench = (await details(workout.id)).exercises.first;
+        await repository.addSet(bench.entry.id);
+        final benchSets = (await details(workout.id)).exercises.first.sets;
+
+        await repository.deleteSet(benchSets.last.id);
+        await repository.updateExerciseNote(bench.entry.id, ' Siège cran 4 ');
+        await repository.removeExercise(
+          (await details(workout.id)).exercises.last.entry.id,
+        );
+
+        final result = await details(workout.id);
+        expect(result.exercises, hasLength(1));
+        expect(result.exercises.single.entry.notes, 'Siège cran 4');
+        expect(result.exercises.single.sets.map((s) => s.id), [
+          benchSets.first.id,
+        ]);
+
+        await repository.updateExerciseNote(bench.entry.id, '');
+        expect(
+          (await details(workout.id)).exercises.single.entry.notes,
+          isNull,
+        );
+      },
+    );
 
     test('abandonner efface la séance et tout son contenu (WO-19)', () async {
       final workout = await repository.startWorkout();

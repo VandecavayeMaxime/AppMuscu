@@ -41,12 +41,11 @@ Application mobile de suivi de musculation inspirée de **Strong** : noter vite 
 | **Exercice** | Mouvement de la bibliothèque (ex. « Développé couché (barre) »). |
 | **Séance** | Entraînement daté, avec une heure de début et de fin. |
 | **Série** | Une ligne « poids × reps » (ou durée) d'un exercice dans une séance. |
-| **Type de série** | Normale, Échauffement (**W**), Drop set (**D**), Échec (**F**). |
 | **Modèle** | Séance type réutilisable (ex. « Push ») : exercices et séries prévues. |
 | **Précédent** | Valeurs de la série de même rang lors de la dernière séance contenant cet exercice. |
 | **Placeholder** | Valeur grisée affichée dans un champ vide, reprise si on valide sans rien saisir. |
 | **Temps de repos** | Durée de repos **propre à chaque série**. Le compte à rebours démarre quand on valide la série et s'affiche sur la ligne juste en dessous. |
-| **Volume** | Σ (kg × reps) des séries validées, échauffements exclus. |
+| **Volume** | Σ (kg × reps) des séries validées. |
 
 ## 4. Navigation et écrans
 
@@ -70,9 +69,9 @@ Toucher un exercice, dans la bibliothèque ou depuis une séance (WO-22), ouvre 
 │      ┌────────────────────┐      │      │ ┌──────────────────────────────┐ │
 │      │  (image générique) │      │      │ │ Push                         │ │
 │      └────────────────────┘      │      │ │ mercredi 23 septembre 2026   │ │
-│ Groupe musculaire    Pectoraux   │      │ │  W   40 kg × 10              │ │
-│ Catégorie                Barre   │      │ │  1   80 kg × 8    ★          │ │
-│                                  │      │ │  2   82,5 kg × 6             │ │
+│ Groupe musculaire    Pectoraux   │      │ │  1   80 kg × 8    ★          │ │
+│ Catégorie                Barre   │      │ │  2   82,5 kg × 6             │ │
+│                                  │      │ │  3   80 kg × 6               │ │
 │ Instructions                     │      │ └──────────────────────────────┘ │
 │ 1. Allonge-toi sur le banc…      │      │ ┌──────────────────────────────┐ │
 │                                  │      │ │ Séance du soir               │ │
@@ -93,13 +92,13 @@ Le menu ⋯ (Modifier, Supprimer) n'existe que pour les exercices perso.
 ├────────────────────────────────────────────┤
 │ Développé couché (barre)              ⋯    │
 │ Série   Précédent     kg     Reps     ✓    │
-│  W      40 × 10       40     10      [✓]   │  ← série validée (colorée)
-│  ─────────────── ✓ 1:00 ───────────────    │  ← repos terminé (grisé)
-│  1      80 × 8        82.5   8       [✓]   │
+│  1      80 × 8        82,5   8       [✓]   │  ← série validée (colorée)
+│  ─────────────── ✓ 1:30 ───────────────    │  ← repos terminé (grisé)
+│  2      80 × 8        82,5   7       [✓]   │
 │  ▓▓▓▓▓▓▓▓▓▓░░░░░░ 1:23 ░░░░░░░░░░░░░░░░    │  ← repos en cours (progression)
-│  2      80 × 8        82.5   7       [ ]   │
+│  3      80 × 7        82,5   6       [ ]   │
 │  ──────────────── 2:00 ────────────────    │  ← repos prévu
-│  3      80 × 7        80     7       [ ]   │  ← placeholders grisés
+│  4      77,5 × 6      77,5   6       [ ]   │  ← placeholders grisés
 │  ──────────────── 2:00 ────────────────    │  ← repos avant l'exercice suivant
 │            + Ajouter une série             │
 ├────────────────────────────────────────────┤
@@ -116,9 +115,9 @@ Le menu ⋯ (Modifier, Supprimer) n'existe que pour les exercices perso.
 |---|---|---|
 | `──── 2:00 ────` | prévu | Temps de repos de la série, affiché discrètement |
 | `▓▓▓▓░░░░ 1:23` | en cours | Barre de progression qui se remplit (▓ = temps écoulé, ░ = temps restant) avec le temps restant |
-| `── ✓ 1:00 ──` | terminé | Ligne grisée avec ✓ |
+| `── ✓ 1:30 ──` | terminé | Ligne grisée avec ✓ |
 
-Chaque série a son propre temps de repos : ici 1:00 après l'échauffement, 2:00 après les séries normales.
+Chaque série a son propre temps de repos : ici 1:30 après la 1re série, 2:00 après les suivantes.
 
 ## 5. Exigences fonctionnelles
 
@@ -181,14 +180,13 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | WO-08 | **Valider une série** (✓) enregistre l'heure de validation, colore la ligne et lance le minuteur de repos. Un champ vide qui a un placeholder prend sa valeur. S'il reste un champ vide sans placeholder, la validation est refusée et le champ est signalé. | M |
 | WO-09 | Retaper ✓ dévalide la série. | M |
 | WO-10 | « + Ajouter une série » ajoute une série vide en bas de l'exercice. Elle reprend le temps de repos de la série au-dessus (RG-12). | M |
-| WO-11 | Supprimer une série en la balayant vers la gauche. Les séries sont renumérotées automatiquement. | M |
-| WO-12 | Taper sur le numéro d'une série permet de changer son type : Normale, Échauffement (W), Drop set (D), Échec (F). | M |
+| WO-11 | Supprimer une série en la balayant vers la gauche, depuis la colonne « Série » ou « Précédent » : sur un champ de saisie, le glissement sélectionne du texte. Les séries sont renumérotées automatiquement. | M |
 | WO-13 | Le menu ⋯ d'un exercice permet d'ajouter une note, de régler d'un coup le temps de repos de **toutes** ses séries, et de retirer l'exercice de la séance. | M |
 | WO-14 | Remplacer un exercice par un autre en gardant les séries (depuis le menu ⋯). | C |
 | WO-15 | Réordonner les exercices par glisser-déposer. | S |
 | WO-16 | Ajouter une note à la séance (texte libre). | S |
-| WO-17 | **Terminer la séance.** Les séries non validées et vides sont supprimées sans rien demander. S'il reste des séries non validées mais remplies, l'app propose : « Tout valider », « Supprimer les séries non validées » ou « Annuler ». Les exercices qui n'ont plus aucune série sont retirés. Une séance sans aucune série validée ne peut pas être terminée : l'app propose de l'abandonner. | M |
-| WO-18 | Après la fin, un écran de résumé affiche la durée, le nombre d'exercices et de séries, et le volume total. | M |
+| WO-17 | **Terminer la séance.** Une série non validée est dite *remplie* si toutes les valeurs de son type de suivi sont saisies (kg et reps, reps, ou durée). Les séries non validées vides ou incomplètes sont supprimées sans rien demander. S'il reste des séries remplies, une fenêtre simple, sans détail série par série, propose « Compléter » (les valider), « Jeter » (seulement s'il y a déjà au moins une série validée) ou « Annuler ». Les exercices qui n'ont plus aucune série sont retirés. S'il n'y a ni série validée ni série remplie, la séance ne peut pas être terminée : l'app propose de l'abandonner. | M |
+| WO-18 | Après la fin, un **écran de résumé** affiche le nom, la date et les horaires (début → fin), la durée, le nombre d'exercices et de séries, et le volume total. Puis, pour chaque exercice : toutes ses séries validées (★ = meilleure, RG-13) et la **comparaison avec la dernière fois**, c'est-à-dire l'évolution du total (volume en kg, reps ou durée selon le type de suivi) avec son écart, et celle de la meilleure série (▲ / ▼ / =), avec la meilleure série de la dernière fois. « Première fois avec cet exercice » s'il n'y a pas de séance précédente. | M |
 | WO-19 | Abandonner la séance (avec confirmation) la supprime définitivement. | M |
 | WO-20 | Réduire la séance en barre persistante (nom, chrono et repos en cours) pour naviguer dans les onglets, puis la rouvrir d'un tap. | S |
 | WO-21 | **Persistance :** chaque modification est enregistrée immédiatement. Si l'app est tuée, on retrouve la séance intacte au redémarrage, avec un bandeau « Séance en cours — Reprendre ». | M |
@@ -212,11 +210,11 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 
 | ID | Exigence | Prio |
 |---|---|---|
-| TP-01 | Créer un modèle : nom, exercices ordonnés, séries prévues (type, kg, reps ou durée, **temps de repos**), note. | M |
+| TP-01 | Créer un modèle : nom, exercices ordonnés, séries prévues (kg, reps ou durée, **temps de repos**), note. | M |
 | TP-02 | L'onglet Séance liste les modèles. Chaque carte affiche le nom, un aperçu des exercices (« 3 × Développé couché, 4 × Squat… ») et la date de dernière utilisation. | M |
 | TP-03 | Modifier, renommer ou supprimer un modèle (avec confirmation). Supprimer un modèle ne touche pas aux séances passées. | M |
 | TP-04 | Dupliquer un modèle. | S |
-| TP-05 | **Démarrer une séance depuis un modèle** : la séance reprend le nom, les exercices et les séries (nombre, type, temps de repos) du modèle. Les kg/reps du modèle deviennent les placeholders (RG-11). | M |
+| TP-05 | **Démarrer une séance depuis un modèle** : la séance reprend le nom, les exercices et les séries (nombre, temps de repos) du modèle. Les kg/reps du modèle deviennent les placeholders (RG-11). | M |
 | TP-06 | Créer un modèle à partir d'une séance terminée, depuis l'écran de résumé. | S |
 | TP-07 | Quand on termine une séance issue d'un modèle et que les exercices, le nombre de séries ou les valeurs ont changé, l'app propose « Mettre à jour le modèle » ou « Garder le modèle tel quel ». | S |
 | TP-08 | Réordonner les modèles. | C |
@@ -234,8 +232,8 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 
 | ID | Règle |
 |---|---|
-| RG-01 | **Volume** = Σ (kg × reps) des séries **validées** de type Normale, Drop set ou Échec, toujours calculé en kg. Les échauffements, les exercices « reps seules » et les exercices « durée » ne comptent pas. |
-| RG-02 | **Numérotation** : les séries normales sont numérotées 1, 2, 3… dans l'ordre. Les autres affichent leur lettre (W, D, F). |
+| RG-01 | **Volume** = Σ (kg × reps) des séries **validées**, toujours calculé en kg. Les exercices « reps seules » et « durée » ne comptent pas. |
+| RG-02 | **Numérotation** : les séries d'un exercice sont numérotées 1, 2, 3… dans l'ordre. |
 | RG-03 | **Correspondance « Précédent »** : la k-ième série d'un exercice (tous types confondus, dans l'ordre) correspond à la k-ième série du même exercice dans la séance de référence (RG-04). |
 | RG-04 | **Séance de référence** d'un exercice : la séance terminée et non supprimée la plus récente (par date de début) qui contient au moins une série validée de cet exercice. La séance en cours est exclue. |
 | RG-05 | **Nom par défaut** : 5h00–11h59 « Séance du matin », 12h00–17h59 « Séance de l'après-midi », 18h00–4h59 « Séance du soir ». Une séance démarrée depuis un modèle prend le nom du modèle. |
@@ -246,7 +244,7 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | RG-10 | Les suppressions sont « douces » en base (marquées, pas effacées) pour préparer la sync. L'utilisateur ne voit pas la différence. Exception : une séance abandonnée est effacée pour de bon. |
 | RG-11 | **Placeholder d'un champ** = valeur prévue dans le modèle si elle existe, sinon valeur « Précédent », sinon rien. |
 | RG-12 | Une série ajoutée reprend le temps de repos propre de la série au-dessus. S'il n'y en a pas, elle n'a pas de valeur propre et RG-09 s'applique. |
-| RG-13 | **Meilleure série** d'une séance (échauffements exclus ; en cas d'égalité, la première) : poids + reps → le 1RM estimé le plus élevé (formule d'Epley : kg × (1 + reps / 30), ce qui permet de comparer 100 kg × 5 et 90 kg × 10) ; reps seules → le plus de reps ; durée → la plus longue. |
+| RG-13 | **Meilleure série** d'une séance (en cas d'égalité, la première) : poids + reps → le 1RM estimé le plus élevé (formule d'Epley : kg × (1 + reps / 30), ce qui permet de comparer 100 kg × 5 et 90 kg × 10) ; reps seules → le plus de reps ; durée → la plus longue. |
 | RG-14 | **Unités** : les poids sont toujours enregistrés en kg. Ils sont saisis et affichés dans l'unité de l'exercice (1 lb = 0,45359237 kg), avec la virgule française et au plus 2 décimales. |
 
 ## 7. Exigences non fonctionnelles (NF)
@@ -293,3 +291,4 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | D9 | Catégorie | « Catégorie » = équipement (comme dans Strong) |
 | D10 | Unités | Choix kg / lb **par exercice** (kg par défaut), pas de réglage global. Les lb entrent donc dans le MVP |
 | D11 | Idées retenues | Ouvrir la fiche pendant une séance (WO-22), meilleure série ★ (RG-13), onglets Records et Graphique en v2 |
+| D12 | Types de série | **Retirés** (échauffement, drop set, échec : WO-12 supprimée). Toutes les séries sont « normales ». La colonne `set_type` reste en base avec la valeur `normal`, ce qui évite une migration et permet de les réintroduire un jour |

@@ -180,15 +180,32 @@ Future<RestChoice?> showRestPicker(
   );
 }
 
+/// Même feuille pour le temps de repos global des réglages (ST-01) : ni
+/// « Par défaut » ni « Appliquer à toutes les séries ». Renvoie le temps
+/// choisi, ou `null` si elle est fermée sans choix.
+Future<int?> showDefaultRestPicker(
+  BuildContext context, {
+  required int current,
+}) async {
+  final choice = await showModalBottomSheet<RestChoice>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => _RestPicker(current: current),
+  );
+  return choice?.seconds;
+}
+
 /// Choix du temps de repos d'une série, ou de toutes celles de l'exercice.
 class _RestPicker extends StatefulWidget {
-  const _RestPicker({required this.current, required this.defaultSeconds});
+  const _RestPicker({required this.current, this.defaultSeconds});
 
-  /// Valeur propre actuelle de la série (`null` = par défaut).
+  /// Valeur actuelle (pour une série, `null` = par défaut).
   final int? current;
 
   /// Valeur par défaut qui s'appliquera si on choisit « Par défaut » (RG-09).
-  final int defaultSeconds;
+  /// `null` pour le réglage global : pas de choix « Par défaut », ni de case
+  /// « Appliquer à toutes les séries ».
+  final int? defaultSeconds;
 
   @override
   State<_RestPicker> createState() => _RestPickerState();
@@ -199,8 +216,10 @@ class _RestPickerState extends State<_RestPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final defaultSeconds = widget.defaultSeconds;
+    final forSet = defaultSeconds != null;
     String label(int? seconds) => switch (seconds) {
-      null => 'Par défaut (${formatDuration(widget.defaultSeconds)})',
+      null => 'Par défaut (${formatDuration(defaultSeconds ?? 0)})',
       0 => 'Sans repos',
       _ => formatDuration(seconds),
     };
@@ -216,13 +235,15 @@ class _RestPickerState extends State<_RestPicker> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
-          CheckboxListTile(
-            value: _allSets,
-            title: const Text("Appliquer à toutes les séries de l'exercice"),
-            onChanged: (value) => setState(() => _allSets = value ?? false),
-          ),
-          const Divider(),
-          for (final seconds in <int?>[null, ...restChoices])
+          if (forSet) ...[
+            CheckboxListTile(
+              value: _allSets,
+              title: const Text("Appliquer à toutes les séries de l'exercice"),
+              onChanged: (value) => setState(() => _allSets = value ?? false),
+            ),
+            const Divider(),
+          ],
+          for (final seconds in <int?>[if (forSet) null, ...restChoices])
             ListTile(
               title: Text(label(seconds)),
               trailing: seconds == widget.current

@@ -19,7 +19,11 @@ void main() {
     db = createTestDatabase();
     repository = RestTimerRepository(db);
     notifications = FakeRestNotifications();
-    controller = RestTimerController(repository, notifications);
+    controller = RestTimerController(
+      repository,
+      notifications,
+      SettingsRepository(db),
+    );
   });
   tearDown(() => db.close());
 

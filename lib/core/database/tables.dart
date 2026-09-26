@@ -65,6 +65,10 @@ class Exercises extends Table with UuidPrimaryKey, Timestamps {
   /// Consignes d'exécution, affichées dans la fiche (EX-09).
   TextColumn get instructions => text().nullable()();
 
+  /// Note personnelle (réglage de la machine…), attachée à l'exercice où
+  /// qu'on la saisisse : fiche, séance, modèle (EX-11). *Ajoutée en v4.*
+  TextColumn get note => text().nullable()();
+
   /// `false` pour les exercices livrés avec l'app.
   BoolColumn get isCustom => boolean().withDefault(const Constant(false))();
 }
@@ -133,6 +137,9 @@ class WorkoutExercises extends Table with UuidPrimaryKey {
       text().references(Workouts, #id, onDelete: KeyAction.cascade)();
   TextColumn get exerciseId => text().references(Exercises, #id)();
   IntColumn get position => integer()();
+
+  /// Plus utilisée depuis la v4 : la note est désormais celle de l'exercice
+  /// (`exercises.note`), où la migration a recopié la plus récente.
   TextColumn get notes => text().nullable()();
 }
 

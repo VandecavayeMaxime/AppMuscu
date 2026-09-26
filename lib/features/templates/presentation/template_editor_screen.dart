@@ -9,6 +9,8 @@ import '../../../core/utils/weight_format.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../exercises/data/exercise_repository.dart';
+import '../../exercises/presentation/exercise_note.dart';
+import '../../exercises/presentation/exercise_providers.dart';
 import '../../rest_timer/domain/rest_timer.dart';
 import '../../rest_timer/presentation/rest_line.dart';
 import '../../settings/data/settings_repository.dart';
@@ -239,7 +241,7 @@ class _TemplateEditorScreenState extends ConsumerState<TemplateEditorScreen> {
   }
 }
 
-enum _ExerciseAction { reorder, remove }
+enum _ExerciseAction { note, reorder, remove }
 
 /// Un exercice du modèle : titre et menu, tableau des séries prévues avec
 /// leur temps de repos, « + Ajouter une série ».
@@ -266,7 +268,9 @@ class _DraftExerciseSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final exercise = item.exercise;
+    // L'exercice tel qu'en base : sa note peut changer pendant l'édition.
+    final exercise =
+        ref.watch(exerciseProvider(item.exercise.id)).value ?? item.exercise;
     final globalRest =
         ref.watch(defaultRestSecondsProvider).value ??
         SettingsRepository.fallbackRestSeconds;
@@ -300,10 +304,21 @@ class _DraftExerciseSection extends ConsumerWidget {
               tooltip: "Options de l'exercice",
               icon: const Icon(Icons.more_horiz),
               onSelected: (action) => switch (action) {
+                // La note appartient à l'exercice : enregistrée tout de
+                // suite, sans attendre « Enregistrer » (EX-11).
+                _ExerciseAction.note => editExerciseNote(
+                  context,
+                  ref,
+                  exercise,
+                ),
                 _ExerciseAction.reorder => onReorder?.call(),
                 _ExerciseAction.remove => onRemove(),
               },
               itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: _ExerciseAction.note,
+                  child: Text(exerciseNoteAction(exercise)),
+                ),
                 if (onReorder != null)
                   const PopupMenuItem(
                     value: _ExerciseAction.reorder,
@@ -317,6 +332,7 @@ class _DraftExerciseSection extends ConsumerWidget {
             ),
           ],
         ),
+        ExerciseNoteText(exercise),
         SetColumns(
           label: Text('Série', style: headerStyle),
           inputs: [

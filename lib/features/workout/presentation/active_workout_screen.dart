@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -6,6 +7,8 @@ import '../../../core/database/app_database.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/text_input_dialog.dart';
+import '../../exercises/presentation/exercise_note.dart';
+import '../../rest_timer/presentation/rest_countdown.dart';
 import '../../rest_timer/presentation/rest_line.dart';
 import '../../rest_timer/presentation/rest_timer_providers.dart';
 import '../data/workout_repository.dart';
@@ -31,6 +34,16 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   /// `null` = affichage normal.
   List<String>? _order;
 
+  /// Ligne de repos du minuteur (RT-08) : pour savoir si elle est visible et
+  /// pouvoir y revenir.
+  final _runningLineKey = GlobalKey();
+  final _scrollViewKey = GlobalKey();
+
+  /// Faux quand la ligne du repos en cours est sortie de l'écran : le
+  /// compteur compact s'affiche alors dans l'en-tête.
+  bool _runningLineVisible = true;
+  bool _initialScrollDone = false;
+
   @override
   Widget build(BuildContext context) {
     final workout = ref.watch(activeWorkoutProvider).value;
@@ -45,7 +58,20 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     }
 
     final details = ref.watch(workoutDetailsProvider(workout.id)).value;
+    final timer = ref.watch(restTimerProvider).value;
     final theme = Theme.of(context);
+
+    // Une fois l'écran dessiné : la ligne du repos en cours est-elle visible ?
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkRunningLine());
+    // En rouvrant la séance pendant un repos, on arrive sur sa ligne (RT-08).
+    if (details != null && !_initialScrollDone) {
+      _initialScrollDone = true;
+      if (timer != null && timer.isRunning(clock.now())) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _revealRunningLine(animate: false),
+        );
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -71,8 +97,12 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
           ),
         ),
         actions: [
+          // Compteur compact quand la ligne du repos est hors de l'écran ;
+          // le toucher y ramène (RT-08).
+          if (!_runningLineVisible)
+            RestCountdown(onTap: () => _revealRunningLine(animate: true)),
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(left: 8, right: 8),
             child: FilledButton(
               onPressed: details == null
                   ? null
@@ -86,36 +116,85 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _order != null
           ? _reorderList(details)
-          : ListView(
-              padding: const EdgeInsets.only(bottom: 32),
-              children: [
-                for (final item in details.exercises)
-                  _ExerciseSection(
-                    item,
-                    key: ValueKey(item.entry.id),
-                    onReorder: details.exercises.length < 2
-                        ? null
-                        : () => _startReorder(details),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                  child: FilledButton.tonalIcon(
-                    icon: const Icon(Icons.add),
-                    label: const Text('Ajouter des exercices'),
-                    onPressed: () => _addExercises(context, ref, workout.id),
-                  ),
-                ),
-                Center(
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: theme.colorScheme.error,
+          // Tout l'écran est construit d'un coup (une séance ne compte que
+          // quelques dizaines de séries) : la ligne du repos en cours existe
+          // donc même hors de l'écran, et on peut y revenir.
+          : NotificationListener<ScrollNotification>(
+              onNotification: (_) {
+                _checkRunningLine();
+                return false;
+              },
+              child: SingleChildScrollView(
+                key: _scrollViewKey,
+                padding: const EdgeInsets.only(bottom: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final item in details.exercises)
+                      _ExerciseSection(
+                        item,
+                        key: ValueKey(item.entry.id),
+                        runningSetId: timer?.setId,
+                        runningLineKey: _runningLineKey,
+                        onReorder: details.exercises.length < 2
+                            ? null
+                            : () => _startReorder(details),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                      child: FilledButton.tonalIcon(
+                        icon: const Icon(Icons.add),
+                        label: const Text('Ajouter des exercices'),
+                        onPressed: () =>
+                            _addExercises(context, ref, workout.id),
+                      ),
                     ),
-                    onPressed: () => _discard(context, ref, workout.id),
-                    child: const Text('Annuler la séance'),
-                  ),
+                    Center(
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.error,
+                        ),
+                        onPressed: () => _discard(context, ref, workout.id),
+                        child: const Text('Annuler la séance'),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
+    );
+  }
+
+  /// Met à jour [_runningLineVisible] : la ligne du repos en cours est-elle
+  /// (au moins en partie) dans la zone visible de la liste ?
+  void _checkRunningLine() {
+    if (!mounted) return;
+    final line = _runningLineKey.currentContext?.findRenderObject();
+    final view = _scrollViewKey.currentContext?.findRenderObject();
+    var visible = true; // pas de ligne de repos : rien à signaler
+    if (line is RenderBox &&
+        view is RenderBox &&
+        line.attached &&
+        line.hasSize &&
+        view.hasSize) {
+      final top = line.localToGlobal(Offset.zero).dy;
+      final viewTop = view.localToGlobal(Offset.zero).dy;
+      visible =
+          top + line.size.height > viewTop && top < viewTop + view.size.height;
+    }
+    if (visible != _runningLineVisible) {
+      setState(() => _runningLineVisible = visible);
+    }
+  }
+
+  /// Fait défiler la liste jusqu'à la ligne du repos en cours (RT-08).
+  void _revealRunningLine({required bool animate}) {
+    final line = _runningLineKey.currentContext;
+    if (line == null) return;
+    Scrollable.ensureVisible(
+      line,
+      alignment: 0.3,
+      duration: animate ? const Duration(milliseconds: 300) : Duration.zero,
     );
   }
 
@@ -296,9 +375,20 @@ enum _ExerciseAction { note, reorder, remove }
 /// Un exercice de la séance : titre et menu, note, tableau des séries,
 /// « + Ajouter une série ».
 class _ExerciseSection extends ConsumerStatefulWidget {
-  const _ExerciseSection(this.item, {super.key, this.onReorder});
+  const _ExerciseSection(
+    this.item, {
+    super.key,
+    required this.runningSetId,
+    required this.runningLineKey,
+    this.onReorder,
+  });
 
   final WorkoutExerciseDetails item;
+
+  /// Série dont le repos est en cours : sa ligne de repos reçoit
+  /// [runningLineKey] (RT-08).
+  final String? runningSetId;
+  final GlobalKey runningLineKey;
 
   /// Passe en mode « réorganiser » ; `null` s'il n'y a qu'un exercice.
   final VoidCallback? onReorder;
@@ -318,7 +408,6 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final exercise = item.exercise;
-    final note = item.entry.notes;
     final sets = [
       for (final set in item.sets)
         if (!_dismissed.contains(set.id)) set,
@@ -360,9 +449,7 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
               itemBuilder: (context) => [
                 PopupMenuItem(
                   value: _ExerciseAction.note,
-                  child: Text(
-                    note == null ? 'Ajouter une note' : 'Modifier la note',
-                  ),
+                  child: Text(exerciseNoteAction(exercise)),
                 ),
                 if (widget.onReorder != null)
                   const PopupMenuItem(
@@ -377,17 +464,8 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
             ),
           ],
         ),
-        if (note != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              note,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontStyle: FontStyle.italic,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
+        // Note de l'exercice, la même partout (EX-11).
+        ExerciseNoteText(exercise),
         SetColumns(
           label: Text('Série', style: headerStyle),
           previous: Text(
@@ -422,7 +500,13 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
                   exercise: exercise,
                   previous: index < previous.length ? previous[index] : null,
                 ),
-                RestLine(set: set, exercise: exercise),
+                RestLine(
+                  key: set.id == widget.runningSetId
+                      ? widget.runningLineKey
+                      : null,
+                  set: set,
+                  exercise: exercise,
+                ),
               ],
             ),
           ),
@@ -442,16 +526,7 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
     final repository = ref.read(workoutRepositoryProvider);
     switch (action) {
       case _ExerciseAction.note:
-        final note = await showTextInputDialog(
-          context,
-          title: 'Note',
-          initialValue: item.entry.notes ?? '',
-          hint: 'Réglage de la machine, sensations…',
-          maxLines: 4,
-        );
-        if (note != null) {
-          await repository.updateExerciseNote(item.entry.id, note);
-        }
+        await editExerciseNote(context, ref, item.exercise);
       case _ExerciseAction.reorder:
         widget.onReorder?.call();
       case _ExerciseAction.remove:

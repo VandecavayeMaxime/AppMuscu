@@ -2,6 +2,8 @@ import 'package:app_muscu/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:app_muscu/features/workout/presentation/active_workout_bar.dart';
+
 import '../../../helpers/pump_app.dart';
 import '../../../helpers/test_database.dart';
 
@@ -350,6 +352,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Pieds un peu plus écartés'), findsOneWidget);
 
+      // La note est attachée à l'exercice : on la retrouve dans sa fiche,
+      // ouverte depuis la séance comme depuis l'onglet Exercices (EX-11).
+      await tester.tap(find.text('Squat (barre)'));
+      await tester.pumpAndSettle();
+      expect(find.text('Pieds un peu plus écartés'), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
       await tester.tap(find.byTooltip("Options de l'exercice").first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Retirer de la séance'));
@@ -392,24 +402,79 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Modèles'), findsOneWidget);
-    expect(find.text('Reprendre'), findsNothing);
+    expect(find.byTooltip('Reprendre la séance'), findsNothing);
   });
 
-  testWorkout('réduire la séance puis la reprendre depuis l’onglet Séance', (
-    tester,
-  ) async {
-    await startWorkout(tester);
-    await addExercises(tester, ['Squat (barre)']);
+  group('séance réduite (WO-20, RT-08)', () {
+    testWorkout('une barre au-dessus des onglets, dans chaque onglet, '
+        'rouvre la séance', (tester) async {
+      await startWorkout(tester);
+      await addExercises(tester, ['Squat (barre)']);
 
-    await tester.tap(find.byTooltip('Réduire'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Réduire'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Reprendre la séance'), findsOneWidget);
 
-    expect(find.text('Séance en cours'), findsOneWidget);
+      await tester.tap(tab('Exercices'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Reprendre la séance'), findsOneWidget);
 
-    await tester.tap(find.text('Reprendre'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Reprendre la séance'));
+      await tester.pumpAndSettle();
+      expect(find.text('Terminer'), findsOneWidget);
+      expect(find.text('Squat (barre)'), findsOneWidget);
+    });
 
-    expect(find.text('Squat (barre)'), findsOneWidget);
+    testWorkout('pendant un repos, la barre affiche le compteur', (
+      tester,
+    ) async {
+      await startWorkout(tester);
+      await addExercises(tester, ['Squat (barre)']);
+      await tester.enterText(field(0), '100');
+      await tester.enterText(field(1), '5');
+      await validateSet(tester);
+
+      await tester.tap(find.byTooltip('Réduire'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(ActiveWorkoutBar),
+          matching: find.byTooltip('Repos en cours'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWorkout('ligne de repos hors de l’écran : compteur dans l’en-tête, '
+        'qui y ramène', (tester) async {
+      await startWorkout(tester);
+      await addExercises(tester, [
+        'Squat (barre)',
+        'Développé couché (barre)',
+        'Tractions',
+      ]);
+      // Écran plus petit (360 × 500 dp) : la séance ne tient plus en entier.
+      tester.view.physicalSize = const Size(1080, 1500);
+      await tester.pumpAndSettle();
+      await tester.enterText(field(0), '100');
+      await tester.enterText(field(1), '5');
+      await validateSet(tester);
+      final headerCountdown = find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byTooltip('Repos en cours'),
+      );
+      expect(headerCountdown, findsNothing); // la ligne est visible
+
+      // Glisser depuis la colonne « Série », hors des champs de saisie.
+      await tester.dragFrom(const Offset(20, 350), const Offset(0, -400));
+      await tester.pumpAndSettle();
+      expect(headerCountdown, findsOneWidget);
+
+      await tester.tap(headerCountdown);
+      await tester.pumpAndSettle();
+      expect(headerCountdown, findsNothing);
+    });
   });
 
   testWorkout(

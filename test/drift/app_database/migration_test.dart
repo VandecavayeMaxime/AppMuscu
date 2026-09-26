@@ -10,6 +10,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
+import 'generated/schema_v4.dart' as v4;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -174,4 +175,67 @@ void main() {
       },
     );
   });
+
+  test(
+    'v3 → v4 : chaque exercice reprend sa dernière note de séance',
+    () async {
+      v3.ExercisesData exercise(String id) => v3.ExercisesData(
+        id: id,
+        createdAt: 0,
+        updatedAt: 0,
+        name: id,
+        nameNormalized: id,
+        equipment: 'barbell',
+        bodyPart: 'legs',
+        trackingType: 'weightReps',
+        weightUnit: 'kg',
+        isCustom: 0,
+      );
+      v3.WorkoutsData workout(String id, int startedAt) => v3.WorkoutsData(
+        id: id,
+        createdAt: 0,
+        updatedAt: 0,
+        name: id,
+        startedAt: startedAt,
+        endedAt: startedAt + 3600,
+      );
+      v3.WorkoutExercisesData entry(String workoutId, String? notes) =>
+          v3.WorkoutExercisesData(
+            id: 'we-$workoutId',
+            workoutId: workoutId,
+            exerciseId: 'squat',
+            position: 0,
+            notes: notes,
+          );
+
+      await verifier.testWithDataIntegrity(
+        oldVersion: 3,
+        newVersion: 4,
+        createOld: v3.DatabaseAtV3.new,
+        createNew: v4.DatabaseAtV4.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch
+            ..insertAll(oldDb.exercises, [exercise('squat'), exercise('bench')])
+            ..insertAll(oldDb.workouts, [
+              workout('lundi', 1000),
+              workout('mercredi', 2000),
+              workout('vendredi', 3000),
+            ])
+            ..insertAll(oldDb.workoutExercises, [
+              entry('lundi', 'Ancienne note'),
+              entry('mercredi', 'Siège cran 4'),
+              entry('vendredi', null), // pas de note cette fois-là
+            ]);
+        },
+        validateItems: (newDb) async {
+          final notes = {
+            for (final row in await newDb.select(newDb.exercises).get())
+              row.id: row.note,
+          };
+          expect(notes, {'squat': 'Siège cran 4', 'bench': null});
+        },
+      );
+    },
+  );
 }

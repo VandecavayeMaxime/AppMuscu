@@ -352,35 +352,24 @@ void main() {
       expect((await details(workout.id)).workout.name, 'Push');
     });
 
-    test(
-      'suppression de série, note et retrait d’exercice (WO-11, WO-13)',
-      () async {
-        final workout = await repository.startWorkout(templateId);
-        await repository.addExercises(workout.id, [benchPressId, squatId]);
-        final bench = (await details(workout.id)).exercises.first;
-        await repository.addSet(bench.entry.id);
-        final benchSets = (await details(workout.id)).exercises.first.sets;
+    test('suppression de série et retrait d’exercice (WO-11, WO-13)', () async {
+      final workout = await repository.startWorkout(templateId);
+      await repository.addExercises(workout.id, [benchPressId, squatId]);
+      final bench = (await details(workout.id)).exercises.first;
+      await repository.addSet(bench.entry.id);
+      final benchSets = (await details(workout.id)).exercises.first.sets;
 
-        await repository.deleteSet(benchSets.last.id);
-        await repository.updateExerciseNote(bench.entry.id, ' Siège cran 4 ');
-        await repository.removeExercise(
-          (await details(workout.id)).exercises.last.entry.id,
-        );
+      await repository.deleteSet(benchSets.last.id);
+      await repository.removeExercise(
+        (await details(workout.id)).exercises.last.entry.id,
+      );
 
-        final result = await details(workout.id);
-        expect(result.exercises, hasLength(1));
-        expect(result.exercises.single.entry.notes, 'Siège cran 4');
-        expect(result.exercises.single.sets.map((s) => s.id), [
-          benchSets.first.id,
-        ]);
-
-        await repository.updateExerciseNote(bench.entry.id, '');
-        expect(
-          (await details(workout.id)).exercises.single.entry.notes,
-          isNull,
-        );
-      },
-    );
+      final result = await details(workout.id);
+      expect(result.exercises, hasLength(1));
+      expect(result.exercises.single.sets.map((s) => s.id), [
+        benchSets.first.id,
+      ]);
+    });
 
     test('temps de repos d’une série, ou de toutes celles d’un exercice '
         '(RT-07)', () async {

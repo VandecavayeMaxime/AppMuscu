@@ -458,20 +458,6 @@ class WorkoutRepository {
     await (_db.delete(_db.workoutSets)..where((s) => s.id.equals(setId))).go();
   }
 
-  /// Note d'un exercice pour cette séance (WO-13) ; `null` ou vide = aucune.
-  Future<void> updateExerciseNote(
-    String workoutExerciseId,
-    String? note,
-  ) async {
-    final text = note?.trim() ?? '';
-    await (_db.update(
-      _db.workoutExercises,
-    )..where((e) => e.id.equals(workoutExerciseId))).write(
-      WorkoutExercisesCompanion(notes: Value(text.isEmpty ? null : text)),
-    );
-    await _touchWorkoutOfEntry(workoutExerciseId);
-  }
-
   /// Réordonne les exercices de la séance (WO-15) : [entryIds] donne les
   /// lignes de workout_exercises dans le nouvel ordre.
   Future<void> reorderExercises(String workoutId, List<String> entryIds) {

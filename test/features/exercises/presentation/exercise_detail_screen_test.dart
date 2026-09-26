@@ -36,6 +36,33 @@ void main() {
       expect(find.text('Réglage global'), findsOneWidget);
     });
 
+    testApp('note personnelle, même pour un exercice intégré (EX-11)', (
+      tester,
+    ) async {
+      await openExercise(tester, 'Développé couché (barre)');
+      expect(find.text('Aucune note'), findsOneWidget);
+
+      await tester.tap(find.text('Aucune note'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'Siège cran 4',
+      );
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Enregistrer'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Siège cran 4'), findsOneWidget);
+      expect(find.text('Aucune note'), findsNothing);
+    });
+
     testApp('change l’unité et le minuteur de repos', (tester) async {
       await openExercise(tester, 'Développé couché (barre)');
 

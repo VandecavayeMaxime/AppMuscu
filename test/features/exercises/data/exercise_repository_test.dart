@@ -186,6 +186,14 @@ void main() {
       expect(bench.defaultRestSeconds, 150);
     });
 
+    test('note personnelle, même d’un exercice intégré (EX-11)', () async {
+      await repository.updateNote(benchPressId, '  Siège cran 4 ');
+      expect((await repository.findById(benchPressId))!.note, 'Siège cran 4');
+
+      await repository.updateNote(benchPressId, '   ');
+      expect((await repository.findById(benchPressId))!.note, isNull);
+    });
+
     test('la fiche se met à jour toute seule', () async {
       final updates = StreamIterator(repository.watchExercise(benchPressId));
 

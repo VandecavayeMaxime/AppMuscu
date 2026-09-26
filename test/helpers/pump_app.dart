@@ -1,6 +1,7 @@
 import 'package:app_muscu/app/app.dart';
 import 'package:app_muscu/core/database/app_database.dart';
 import 'package:app_muscu/core/database/database_provider.dart';
+import 'package:app_muscu/core/platform/screen_awake.dart';
 import 'package:app_muscu/core/utils/clock_tick.dart';
 import 'package:app_muscu/features/rest_timer/data/rest_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,11 +9,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'fake_rest_notifications.dart';
+import 'fake_screen_awake.dart';
 import 'test_database.dart';
 
 /// Comme `testWidgets`, mais avec l'app complète sur un écran de téléphone
-/// (360 × 1200 dp), une base de test en mémoire préparée par [setUp], et de
-/// fausses notifications (voir [notificationsOf]).
+/// (360 × 1200 dp), une base de test en mémoire préparée par [setUp], de
+/// fausses notifications (voir [notificationsOf]) et une fausse mise en
+/// veille (voir [screenAwakeOf]).
 void testApp(
   String description,
   Future<void> Function(WidgetTester tester) body, {
@@ -33,6 +36,7 @@ void testApp(
           // `pumpAndSettle` de se terminer.
           clockTickProvider.overrideWith((ref) => const Stream.empty()),
           restNotificationsProvider.overrideWithValue(FakeRestNotifications()),
+          screenAwakeProvider.overrideWithValue(FakeScreenAwake()),
         ],
         child: const AppMuscu(),
       ),
@@ -54,6 +58,12 @@ FakeRestNotifications notificationsOf(WidgetTester tester) =>
     ProviderScope.containerOf(tester.element(find.byType(AppMuscu)))
             .read(restNotificationsProvider)
         as FakeRestNotifications;
+
+/// La fausse mise en veille de l'app en cours de test (ST-04).
+FakeScreenAwake screenAwakeOf(WidgetTester tester) =>
+    ProviderScope.containerOf(tester.element(find.byType(AppMuscu)))
+            .read(screenAwakeProvider)
+        as FakeScreenAwake;
 
 /// Dans le sélecteur d'exercices, coche l'exercice [name], en faisant
 /// d'abord défiler la liste jusqu'à lui.

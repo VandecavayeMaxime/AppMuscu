@@ -123,6 +123,7 @@ erDiagram
 | default_rest_seconds | INTEGER NULL | préférence : NULL → réglage global, 0 → désactivé (EX-08) |
 | weight_unit | TEXT | préférence : `kg` (défaut) ou `lb` (EX-08, RG-14). *Ajoutée en v2* |
 | instructions | TEXT NULL | consignes affichées dans la fiche (EX-09). *Colonne `notes` renommée en v2* |
+| note | TEXT NULL | note personnelle (EX-11), modifiable depuis la fiche, la séance et l'éditeur de modèle. *Ajoutée en v4* |
 | is_custom | BOOLEAN | intégré ou créé par l'utilisateur |
 | created_at, updated_at, deleted_at | INTEGER | `deleted_at` = archivé (EX-05) |
 
@@ -145,7 +146,7 @@ erDiagram
 | notes | TEXT NULL | |
 | created_at, updated_at, deleted_at | INTEGER | |
 
-**workout_exercises** : `id`, `workout_id` → workouts, `exercise_id` → exercises, `position`, `notes`.
+**workout_exercises** : `id`, `workout_id` → workouts, `exercise_id` → exercises, `position`, `notes` (plus utilisée depuis la v4 : la note est celle de l'exercice).
 
 **workout_sets**
 
@@ -162,7 +163,7 @@ erDiagram
 | completed_at | INTEGER NULL | **NULL = non validée** |
 | planned_weight_kg, planned_reps, planned_duration_seconds | REAL / INTEGER NULL | valeurs prévues par le modèle, copiées au démarrage (TP-05) : placeholders (RG-11). *Ajoutées en v3* |
 
-**settings** (clé/valeur) : réglages (ST-01 à ST-04) **et** état du minuteur (`rest_set_id`, `rest_ends_at`, `rest_total_seconds`) pour qu'il survive à l'arrêt de l'app et se réaffiche sous la bonne série (RT-03, RT-06).
+**settings** (clé/valeur) : réglages (`default_rest_seconds`, `rest_sound`, `rest_vibration`, `keep_screen_on`, `theme` ; clé absente = valeur par défaut) **et** état du minuteur (`rest_set_id`, `rest_ends_at`, `rest_total_seconds`) pour qu'il survive à l'arrêt de l'app et se réaffiche sous la bonne série (RT-03, RT-06).
 
 ### Index et contraintes
 
@@ -211,7 +212,18 @@ Code : `lib/features/rest_timer/` (domain : `RestTimer`, `effectiveRestSeconds` 
 - **Android** : `POST_NOTIFICATIONS` est demandée au lancement de l'app (après le premier écran, dans `AppMuscu.initState`). Les **alarmes exactes** passent par `USE_EXACT_ALARM`, accordée d'office à partir d'Android 13 et adaptée à une app de minuteur publiée hors Play Store. `SCHEDULE_EXACT_ALARM` sert pour Android ≤ 12L. Si les alarmes exactes sont refusées, la notification est programmée en mode inexact, donc peut-être en retard. Le manifeste déclare le `ScheduledNotificationReceiver` du plugin. Gradle active le *core library desugaring*, requis par le plugin.
 - ⚠️ **Xiaomi / HyperOS** peut bloquer les notifications programmées d'une app en arrière-plan : voir https://dontkillmyapp.com. Plan B si ce n'est pas fiable : un *foreground service* avec une notification de compte à rebours.
 - Pas encore de lien profond depuis la notification : la toucher rouvre simplement l'app là où elle était (en général l'écran de séance).
-- Tests : `testApp()` remplace les notifications par `FakeRestNotifications` (test/helpers), qui note les appels ; `notificationsOf(tester)` la récupère.
+- **Son et vibration (ST-02)** : Android fige le son et la vibration d'un canal de notifications à sa création. Il y a donc un canal par combinaison (`rest_timer`, `rest_timer_sound`, `rest_timer_vibration`, `rest_timer_silent`), choisi au moment de programmer la notification d'après les réglages.
+- Tests : `testApp()` remplace les notifications par `FakeRestNotifications` (test/helpers), qui note les appels (avec son et vibration) ; `notificationsOf(tester)` la récupère.
+
+### Séance réduite et compteur compact (WO-20, RT-08)
+- `ActiveWorkoutBar` est placée dans `HomeShell`, au-dessus de la `NavigationBar` : elle suit donc les trois onglets. Elle n'affiche rien sans séance en cours. `RestCountdown` (« ⏱ 1:12 ») et `RestProgressLine` (rest_timer/presentation) se masquent d'eux-mêmes quand aucun repos ne tourne.
+- L'écran de séance est un `SingleChildScrollView` construit en entier (quelques dizaines de séries au plus), plutôt qu'une liste paresseuse : la ligne du repos en cours existe même hors de l'écran. Elle reçoit une `GlobalKey`. Après chaque image et à chaque défilement, on compare sa position à la zone visible : hors de l'écran → compteur dans l'en-tête. Le toucher, ou rouvrir la séance pendant un repos, appelle `Scrollable.ensureVisible` sur cette clé.
+
+### Réglages (ST)
+- `SettingsRepository` : une clé par réglage dans la table `settings`, un `StreamProvider` par réglage. Pour la notification, `readRestAlert()` fait une simple lecture (`get`).
+- **Thème (ST-03)** : `main()` crée le conteneur Riverpod (`ProviderContainer`) et lit le thème **avant** `runApp` (`UncontrolledProviderScope`) : pas de flash clair → sombre au démarrage. Délai maximal d'une seconde, sinon thème du système.
+- **Écran allumé (ST-04)** : par un **canal de plateforme** (`MethodChannel('appmuscu/screen')`, lib/core/platform/screen_awake.dart). Dart envoie `keepOn(true/false)`, et `MainActivity.kt` pose ou retire `FLAG_KEEP_SCREEN_ON` sur la fenêtre. Pas de dépendance à ajouter. `AppMuscu` écoute (`ref.listenManual`) « réglage activé ET séance en cours ». Les tests utilisent `FakeScreenAwake` (`screenAwakeOf(tester)`).
+- **Note d'exercice (EX-11)** : `editExerciseNote` et `ExerciseNoteText` (exercises/presentation/exercise_note.dart), partagés par la séance, l'éditeur de modèle et la fiche. Dans l'éditeur, la note est écrite tout de suite (elle n'appartient pas au brouillon du modèle) et relue par `exerciseProvider`.
 
 ### Modèles (TP)
 Code : `lib/features/templates/` (domain : `TemplateDetails`, `TemplateDraft`, `workoutDiffersFromTemplate`, `templatePreview` ; data : `TemplateRepository` ; presentation : `TemplateSection`, `TemplateEditorScreen`).
@@ -241,6 +253,7 @@ Configuration dans `build.yaml`. Historique des versions :
 | v1 | Structure initiale (M1) |
 | v2 | Fiche exercice : `notes` → `instructions`, ajout de `weight_unit`, consignes des 10 exercices intégrés |
 | v3 | Modèles : ajout de `planned_weight_kg`, `planned_reps`, `planned_duration_seconds` à `workout_sets` |
+| v4 | Note d'exercice : ajout de `exercises.note`, remplie avec la note de séance la plus récente de chaque exercice |
 
 ### Bibliothèque initiale (EX-01)
 - `lib/core/database/seed/built_in_exercises.dart` contient les 10 exercices de [SPEC §5.1](SPEC.md#51-bibliothèque-dexercices-ex), insérés au premier lancement (`onCreate`). On a choisi un fichier Dart plutôt que JSON : les valeurs d'enum sont vérifiées à la compilation, et il n'y a aucun fichier à charger. Chaque exercice a un **UUID fixe**, ce qui permet aux versions suivantes d'ajouter ou corriger des exercices intégrés, par une migration, sans créer de doublons.
@@ -289,7 +302,7 @@ Chaque jalon se termine par quelque chose de **testable sur le téléphone**. À
 | **M3 — Séance** ✅ (sauf WO-16, reportée ; WO-15 fait au M5 ; WO-20 au M6) | Séance vide (retirée au M5), séries, Précédent, validation, fin, résumé, reprise après arrêt | WO-01 → WO-21 (M/S) | État complexe, flux de la base dans l'UI (`StreamProvider`), `TextEditingController`, gestes (balayage, glisser-déposer), dialogues | 🏋️ **Première vraie séance à la salle** |
 | **M4 — Minuteur** ✅ | Ligne de repos sous chaque série, temps de repos par série, notification de fin de repos (compteur compact RT-08 reporté au M6) | RT-01 → RT-07 | Interfaces et fausses implémentations pour les tests, permissions Android, notifications locales programmées, configuration Gradle et manifeste | Repos notifié téléphone verrouillé |
 | **M5 — Modèles** ✅ | Création, modification, duplication, suppression, démarrer depuis un modèle (aperçu puis « Démarrer »), mise à jour depuis le résumé ; plus de séance vide ; sélecteur = onglet Exercices ; réorganiser par glisser-déposer ; migration v2 → v3 | TP-01 → TP-07 (sauf TP-06, supprimée), WO-15 | Réutiliser des widgets, transactions en base, sous-requêtes, brouillon en mémoire et `PopScope`, renvoyer un résultat d'un écran | Lancer « Push » depuis l'onglet Séance |
-| **M6 — Réglages et finitions** | Réglages, séance réduite, ergonomie, performance, APK release | ST-*, WO-20, NF-03 → NF-05 | Thèmes, préférences, compilation release et signature d'APK | APK installé pour un usage quotidien |
+| **M6 — Réglages et finitions** ✅ | Réglages, séance réduite, compteur compact du repos, note d'exercice ; migration v3 → v4. *L'APK release est reporté (D15).* | ST-01 → ST-04, WO-20, RT-08, EX-11 | Thèmes, préférences, conteneur Riverpod créé avant `runApp`, canal de plateforme (Dart ↔ Kotlin), `GlobalKey` et `Scrollable.ensureVisible` | Séance réduite pendant qu'on consulte une fiche ; réglages appliqués |
 
 ## 8. Risques
 

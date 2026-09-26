@@ -12,6 +12,7 @@ import '../../workout/presentation/set_format.dart';
 import '../data/exercise_repository.dart';
 import '../domain/exercise_enums.dart';
 import 'exercise_providers.dart';
+import 'exercise_note.dart';
 
 /// Temps de repos proposés en secondes ; 0 = minuteur désactivé (RT-01).
 const _restChoices = [0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
@@ -182,6 +183,21 @@ class _AboutTab extends ConsumerWidget {
         ListTile(
           title: const Text('Catégorie'),
           trailing: Text(exercise.equipment.label),
+        ),
+        // Note personnelle, modifiable même pour un exercice intégré, et
+        // même depuis une séance (EX-11).
+        const _SectionTitle('Note'),
+        ListTile(
+          title: Text(
+            exercise.note ?? 'Aucune note',
+            style: exercise.note == null
+                ? theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )
+                : null,
+          ),
+          trailing: const Icon(Icons.edit_outlined),
+          onTap: () => editExerciseNote(context, ref, exercise),
         ),
         const _SectionTitle('Instructions'),
         Padding(

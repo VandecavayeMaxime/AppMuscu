@@ -1,9 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../core/platform/screen_awake.dart';
 import '../features/rest_timer/data/rest_notifications.dart';
+import '../features/settings/data/settings_repository.dart';
+import '../features/settings/domain/app_theme.dart';
+import '../features/workout/presentation/workout_providers.dart';
 import 'router.dart';
 import 'theme.dart';
+
+/// L'écran doit-il rester allumé ? Oui si le réglage est activé et qu'une
+/// séance est en cours (ST-04).
+final _keepScreenAwakeProvider = Provider<bool>(
+  (ref) =>
+      (ref.watch(keepScreenOnProvider).value ?? false) &&
+      ref.watch(activeWorkoutProvider).value != null,
+);
 
 /// Racine de l'application : thème, langue et navigation.
 ///
@@ -26,17 +38,30 @@ class _AppMuscuState extends ConsumerState<AppMuscu> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => ref.read(restNotificationsProvider).requestPermission(),
     );
+    // Écran allumé ou non (ST-04) : appliqué tout de suite, puis à chaque
+    // changement du réglage ou de la séance en cours.
+    ref.listenManual(
+      _keepScreenAwakeProvider,
+      (_, on) => ref.read(screenAwakeProvider).keepOn(on),
+      fireImmediately: true,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = ref.watch(appThemeProvider).value ?? AppTheme.system;
+
     return MaterialApp.router(
       title: 'AppMuscu',
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
-      // Suit le réglage clair/sombre du téléphone ; réglable dans l'app plus tard (ST-03)
-      themeMode: ThemeMode.system,
+      // Thème choisi dans les réglages (ST-03).
+      themeMode: switch (theme) {
+        AppTheme.system => ThemeMode.system,
+        AppTheme.light => ThemeMode.light,
+        AppTheme.dark => ThemeMode.dark,
+      },
       // Textes intégrés de Flutter (boutons de dialogue, sélecteurs…) en français
       locale: const Locale('fr'),
       supportedLocales: const [Locale('fr')],

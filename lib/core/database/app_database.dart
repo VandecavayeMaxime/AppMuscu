@@ -34,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   /// 2. `dart run build_runner build` puis `dart run drift_dev make-migrations` ;
   /// 3. écrire l'étape `fromXToY` ci-dessous et compléter test/drift/.
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -68,6 +68,20 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(sets, sets.plannedWeightKg);
         await m.addColumn(sets, sets.plannedReps);
         await m.addColumn(sets, sets.plannedDurationSeconds);
+      },
+      // v4 : la note est attachée à l'exercice, et non plus à la séance.
+      // Chaque exercice reprend la dernière note prise pendant une séance.
+      from3To4: (m, schema) async {
+        await m.addColumn(schema.exercises, schema.exercises.note);
+        await customStatement('''
+          UPDATE exercises SET note = (
+            SELECT we.notes FROM workout_exercises we
+            JOIN workouts w ON w.id = we.workout_id
+            WHERE we.exercise_id = exercises.id AND we.notes <> ''
+            ORDER BY w.started_at DESC
+            LIMIT 1
+          )
+        ''');
       },
     ),
     // À chaque ouverture : SQLite n'applique les clés étrangères que si on le demande.

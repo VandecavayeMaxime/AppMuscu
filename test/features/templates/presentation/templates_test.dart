@@ -1,3 +1,4 @@
+import 'package:app_muscu/features/exercises/data/exercise_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -157,6 +158,37 @@ void main() {
       },
     );
   });
+
+  testApp(
+    'la note de l’exercice se voit et se modifie dans l’éditeur, '
+    'enregistrée tout de suite (EX-11)',
+    setUp: (db) async {
+      await addTemplate(db);
+      await ExerciseRepository(db).updateNote(benchPressId, 'Siège cran 4');
+    },
+    (tester) async {
+      await openMenu(tester, 'Modifier');
+      expect(find.text('Siège cran 4'), findsOneWidget);
+
+      await tapAndSettle(tester, find.byTooltip("Options de l'exercice"));
+      await tapAndSettle(tester, find.text('Modifier la note'));
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'Siège cran 5',
+      );
+      await tapAndSettle(tester, inDialog('Enregistrer'));
+      expect(find.text('Siège cran 5'), findsOneWidget);
+
+      // Le modèle n'a pas changé : on sort sans question, et la note reste.
+      await tapAndSettle(tester, find.byType(BackButton));
+      await tapAndSettle(tester, tab('Exercices'));
+      await tapAndSettle(tester, find.text('Développé couché (barre)'));
+      expect(find.text('Siège cran 5'), findsOneWidget);
+    },
+  );
 
   testApp(
     'dupliquer puis supprimer un modèle (TP-04, TP-03)',

@@ -53,11 +53,21 @@ Barre d'onglets en bas, 3 entrées :
 
 | Onglet | Contenu |
 |---|---|
-| **Séance** | Séance en cours (s'il y en a une), liste des modèles, création de modèle. Toute séance démarre d'un modèle |
+| **Séance** | Liste des modèles, création de modèle. Toute séance démarre d'un modèle |
 | **Exercices** | Bibliothèque, recherche, filtres, exercices perso |
-| **Réglages** | Temps de repos par défaut, vibration/son, thème |
+| **Réglages** | Temps de repos par défaut, son et vibration, écran allumé, thème |
 
-L'écran **Séance en cours** s'ouvre en plein écran par-dessus les onglets. On peut le réduire en barre persistante en bas de l'écran (WO-20).
+L'écran **Séance en cours** s'ouvre en plein écran par-dessus les onglets. On peut le réduire en une barre au-dessus des onglets, visible dans les trois (WO-20) :
+
+```
+┌──────────────────────────────────┐
+│ ▔▔▔▔▔▔▔▔▔▔▔▔▔░░░░░░░░░░ (repos)  │
+│ Push                ⏱ 1:12    ˄  │
+│ 32:15                            │
+├──────────────────────────────────┤
+│   Séance    Exercices   Réglages │
+└──────────────────────────────────┘
+```
 
 Toucher un exercice, dans la bibliothèque ou depuis une séance (WO-22), ouvre sa **fiche** avec une flèche de retour (EX-07) :
 
@@ -172,8 +182,9 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | EX-06 | Le nom d'un exercice actif est unique (sans tenir compte de la casse ni des accents). | S |
 | EX-07 | **Fiche exercice.** Toucher n'importe quel exercice ouvre sa fiche (avec retour arrière), qui a deux onglets : « À propos » (EX-09) et « Historique » (EX-10). | M |
 | EX-08 | **Préférences par exercice**, réglables pour tous les exercices, intégrés compris : unité des poids (kg ou lb, kg par défaut, masquée pour les exercices sans poids) et minuteur de repos (réglage global, désactivé, ou de 0:30 à 5:00). | M |
-| EX-09 | **Onglet « À propos »** : image du mouvement (générique pour l'instant), groupe musculaire, catégorie, instructions (fournies pour les exercices intégrés, saisies pour les exercices perso), préférences (EX-08). | M |
+| EX-09 | **Onglet « À propos »** : image du mouvement (générique pour l'instant), groupe musculaire, catégorie, note (EX-11), instructions (fournies pour les exercices intégrés, saisies pour les exercices perso), préférences (EX-08). | M |
 | EX-10 | **Onglet « Historique »** : un bloc par séance terminée où l'exercice a au moins une série validée, de la plus récente à la plus ancienne. Chaque bloc affiche le nom de la séance, la date et les séries validées (RG-02), avec la meilleure série marquée ★ (RG-13). | M |
+| EX-11 | **Note d'exercice** : une note libre (réglage de la machine, sensations…) attachée à l'exercice lui-même, intégré ou perso. Elle s'ajoute ou se modifie depuis la fiche (section « Note »), depuis la séance ou depuis l'éditeur de modèle (menu ⋯), et elle est enregistrée tout de suite. Elle s'affiche sous le nom de l'exercice en séance et dans l'éditeur. | M |
 
 **Bibliothèque initiale**
 
@@ -218,15 +229,15 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | WO-09 | Retaper ✓ dévalide la série. | M |
 | WO-10 | « + Ajouter une série » ajoute une série vide en bas de l'exercice. Elle reprend le temps de repos de la série au-dessus (RG-12). | M |
 | WO-11 | Supprimer une série en la balayant vers la gauche, depuis la colonne « Série » ou « Précédent » : sur un champ de saisie, le glissement sélectionne du texte. Les séries sont renumérotées automatiquement. | M |
-| WO-13 | Le menu ⋯ d'un exercice permet d'ajouter une note, de régler d'un coup le temps de repos de **toutes** ses séries, et de retirer l'exercice de la séance. | M |
+| WO-13 | Le menu ⋯ d'un exercice permet d'ajouter ou modifier **sa note** (EX-11, celle de l'exercice, pas de la séance), de le réorganiser (WO-15) et de le retirer de la séance. | M |
 | WO-14 | Remplacer un exercice par un autre en gardant les séries (depuis le menu ⋯). | C |
 | WO-15 | Réordonner les exercices par glisser-déposer : un appui long sur le nom d'un exercice (ou ⋯ → « Réorganiser ») réduit tous les exercices à une ligne ; on les fait glisser par la poignée ≡, puis « OK » rend l'affichage normal. Même geste dans l'éditeur de modèle. | S |
 | WO-16 | Ajouter une note à la séance (texte libre). | S |
 | WO-17 | **Terminer la séance.** Une série non validée est dite *remplie* si toutes les valeurs de son type de suivi sont saisies (kg et reps, reps, ou durée). Les séries non validées vides ou incomplètes sont supprimées sans rien demander. S'il reste des séries remplies, une fenêtre simple, sans détail série par série, propose « Compléter » (les valider), « Jeter » (seulement s'il y a déjà au moins une série validée) ou « Annuler ». Les exercices qui n'ont plus aucune série sont retirés. S'il n'y a ni série validée ni série remplie, la séance ne peut pas être terminée : l'app propose de l'abandonner. | M |
 | WO-18 | Après la fin, un **écran de résumé** affiche le nom, la date et les horaires (début → fin), la durée, le nombre d'exercices et de séries, et le volume total. Puis, pour chaque exercice : toutes ses séries validées (★ = meilleure, RG-13) et la **comparaison avec la dernière fois**, c'est-à-dire l'évolution du total (volume en kg, reps ou durée selon le type de suivi) avec son écart, et celle de la meilleure série (▲ / ▼ / =), avec la meilleure série de la dernière fois. « Première fois avec cet exercice » s'il n'y a pas de séance précédente. | M |
 | WO-19 | Abandonner la séance (avec confirmation) la supprime définitivement. | M |
-| WO-20 | Réduire la séance en barre persistante (nom, chrono et repos en cours) pour naviguer dans les onglets, puis la rouvrir d'un tap. | S |
-| WO-21 | **Persistance :** chaque modification est enregistrée immédiatement. Si l'app est tuée, on retrouve la séance intacte au redémarrage, avec un bandeau « Séance en cours — Reprendre ». | M |
+| WO-20 | Réduire la séance (« ˅ ») en une barre au-dessus des onglets, visible dans les trois tant que la séance est en cours : nom, chrono, compteur et barre de progression du repos en cours. La toucher rouvre la séance, à la hauteur du repos en cours s'il y en a un. | S |
+| WO-21 | **Persistance :** chaque modification est enregistrée immédiatement. Si l'app est tuée, on retrouve la séance intacte au redémarrage, avec la barre de séance réduite (WO-20). | M |
 | WO-22 | Toucher le nom d'un exercice en séance ouvre sa fiche (EX-07), pour revoir son historique entre deux séries. Le menu Modifier / Supprimer y est masqué, pour ne pas quitter la séance par erreur. | M |
 
 ### 5.3 Minuteur de repos (RT)
@@ -237,10 +248,10 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | RT-02 | Valider une série démarre le minuteur de repos **de cette série**, avec son temps de repos. Un seul minuteur tourne à la fois : si on valide une autre série, le repos en cours s'arrête et le nouveau démarre sous la série qu'on vient de valider. Dévalider une série dont le repos tourne arrête le minuteur. | M |
 | RT-03 | **Une ligne de repos suit chaque série**, y compris la dernière d'un exercice. Elle a trois états : **prévu** (temps de repos affiché discrètement, avant validation), **en cours** (barre de progression et temps restant, après validation), **terminé** (✓, surligné de la même couleur que la série validée, une fois le temps écoulé). | M |
 | RT-04 | La ligne de repos **n'a aucun bouton**. Pour écourter un repos, il suffit de valider la série suivante (RT-02). Terminer ou abandonner la séance arrête aussi le minuteur. | M |
-| RT-05 | À la fin du repos, une notification « Repos terminé — Prochaine série : *exercice* » s'affiche avec le son et la vibration du téléphone, que l'app soit ouverte, en arrière-plan ou l'écran verrouillé. L'autorisation d'afficher des notifications est demandée au lancement de l'app (Android ne pose la question qu'une fois). (Réglage son / vibration : ST-02, au M6.) | M |
+| RT-05 | À la fin du repos, une notification « Repos terminé — Prochaine série : *exercice* » s'affiche avec le son et la vibration du téléphone, que l'app soit ouverte, en arrière-plan ou l'écran verrouillé. L'autorisation d'afficher des notifications est demandée au lancement de l'app (Android ne pose la question qu'une fois). Son et vibration se coupent dans les réglages (ST-02). | M |
 | RT-06 | Le minuteur reste exact quand l'app passe en arrière-plan, est tuée ou que l'écran se verrouille, car il repose sur une heure de fin absolue et non sur un décompte. | M |
 | RT-07 | Taper sur une ligne de repos permet de modifier le temps de repos **de cette série**, avec une option « Appliquer à toutes les séries de l'exercice ». | M |
-| RT-08 | Si la ligne de repos en cours sort de l'écran (défilement) ou si la séance est réduite (WO-20), un compteur compact s'affiche dans l'en-tête ou la barre réduite. Un tap dessus ramène à la ligne. *Reporté au M6, avec la séance réduite.* | S |
+| RT-08 | Si la ligne de repos en cours sort de l'écran (défilement) ou si la séance est réduite (WO-20), un compteur compact « ⏱ 1:12 » s'affiche dans l'en-tête ou la barre réduite. Un tap dessus ramène à la ligne. | S |
 | RT-09 | Dans le réglage de RT-07, une option « Enregistrer comme défaut pour cet exercice » met aussi à jour la bibliothèque. | C |
 
 ### 5.4 Modèles (TP)
@@ -260,10 +271,10 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 
 | ID | Exigence | Prio |
 |---|---|---|
-| ST-01 | Régler le temps de repos global par défaut. | M |
-| ST-02 | Activer ou désactiver la vibration et le son de fin de repos. | M |
-| ST-03 | Thème clair, sombre ou selon le système. | S |
-| ST-04 | Garder l'écran allumé pendant une séance. | C |
+| ST-01 | Régler le temps de repos global par défaut (2:00 au départ, « Sans repos » possible). Il vaut pour les exercices sans temps de repos propre (RG-09). | M |
+| ST-02 | Activer ou désactiver le son et la vibration de fin de repos (deux interrupteurs, activés au départ). Le changement vaut à partir du repos suivant. | M |
+| ST-03 | Thème clair, sombre ou selon le système (au départ). | S |
+| ST-04 | Garder l'écran allumé tant qu'une séance est en cours (désactivé au départ). | C |
 
 ## 6. Règles de gestion
 
@@ -332,3 +343,4 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | D12 | Types de série | **Retirés** (échauffement, drop set, échec : WO-12 supprimée). Toutes les séries sont « normales ». La colonne `set_type` reste en base avec la valeur `normal`, ce qui évite une migration et permet de les réintroduire un jour |
 | D13 | Modèles | Séries avec kg/reps prévus (comme Strong), copiés dans la séance au démarrage. Toucher une carte ouvre un aperçu avec « Démarrer » (pas de démarrage en 1 tap). La mise à jour du modèle se propose dans le résumé, sans fenêtre supplémentaire |
 | D14 | Après les premiers essais du M5 | **Plus de séance vide** : toute séance démarre d'un modèle (WO-01), d'où la suppression de TP-06 et du nom selon l'heure (RG-05). Le **sélecteur d'exercices est l'onglet Exercices** en mode sélection, pour que les deux évoluent ensemble (WO-04). Réordonner les exercices par **glisser-déposer après réduction**, comme Strong (WO-15, TP-01). Carte de modèle : un exercice par ligne (TP-02) |
+| D15 | M6 | La **note est attachée à l'exercice**, où qu'on la saisisse, et non plus à la séance (EX-11). La séance réduite remplace la carte « Séance en cours » de l'onglet Séance. Écran allumé désactivé au départ. **Pas d'APK release** pour l'instant : d'autres fonctionnalités passent avant |

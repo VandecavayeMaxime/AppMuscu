@@ -120,6 +120,17 @@ class ExerciseRepository {
     );
   }
 
+  /// Note personnelle d'un exercice, intégré ou perso (EX-11) ; vide = aucune.
+  Future<void> updateNote(String id, String? note) async {
+    final text = note?.trim() ?? '';
+    await (_db.update(_db.exercises)..where((e) => e.id.equals(id))).write(
+      ExercisesCompanion(
+        note: Value(text.isEmpty ? null : text),
+        updatedAt: Value(clock.now()),
+      ),
+    );
+  }
+
   /// Archive un exercice perso (EX-05) : il disparaît de la bibliothèque mais
   /// reste en base, lié aux séances et modèles qui l'utilisent. Son nom
   /// redevient disponible.

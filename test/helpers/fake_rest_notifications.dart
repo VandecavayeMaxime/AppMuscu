@@ -4,8 +4,9 @@ import 'package:app_muscu/features/rest_timer/data/rest_notifications.dart';
 class FakeRestNotifications implements RestNotifications {
   int permissionRequests = 0;
 
-  /// Notifications programmées : heure et exercice suivant.
-  final scheduled = <({DateTime at, String nextExercise})>[];
+  /// Notifications programmées : heure, exercice suivant, son et vibration.
+  final scheduled =
+      <({DateTime at, String nextExercise, bool sound, bool vibration})>[];
   int cancellations = 0;
 
   @override
@@ -15,7 +16,14 @@ class FakeRestNotifications implements RestNotifications {
   Future<void> scheduleRestEnd(
     DateTime at, {
     required String nextExercise,
-  }) async => scheduled.add((at: at, nextExercise: nextExercise));
+    bool sound = true,
+    bool vibration = true,
+  }) async => scheduled.add((
+    at: at,
+    nextExercise: nextExercise,
+    sound: sound,
+    vibration: vibration,
+  ));
 
   @override
   Future<void> cancelRestEnd() async => cancellations++;

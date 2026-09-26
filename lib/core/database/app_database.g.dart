@@ -136,6 +136,15 @@ class $ExercisesTable extends Exercises
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isCustomMeta = const VerificationMeta(
     'isCustom',
   );
@@ -165,6 +174,7 @@ class $ExercisesTable extends Exercises
     defaultRestSeconds,
     weightUnit,
     instructions,
+    note,
     isCustom,
   ];
   @override
@@ -235,6 +245,12 @@ class $ExercisesTable extends Exercises
           data['instructions']!,
           _instructionsMeta,
         ),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
     if (data.containsKey('is_custom')) {
@@ -308,6 +324,10 @@ class $ExercisesTable extends Exercises
         DriftSqlType.string,
         data['${effectivePrefix}instructions'],
       ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
       isCustom: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_custom'],
@@ -356,6 +376,10 @@ class Exercise extends DataClass implements Insertable<Exercise> {
   /// Consignes d'exécution, affichées dans la fiche (EX-09).
   final String? instructions;
 
+  /// Note personnelle (réglage de la machine…), attachée à l'exercice où
+  /// qu'on la saisisse : fiche, séance, modèle (EX-11). *Ajoutée en v4.*
+  final String? note;
+
   /// `false` pour les exercices livrés avec l'app.
   final bool isCustom;
   const Exercise({
@@ -371,6 +395,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     this.defaultRestSeconds,
     required this.weightUnit,
     this.instructions,
+    this.note,
     required this.isCustom,
   });
   @override
@@ -410,6 +435,9 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     if (!nullToAbsent || instructions != null) {
       map['instructions'] = Variable<String>(instructions);
     }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
     map['is_custom'] = Variable<bool>(isCustom);
     return map;
   }
@@ -434,6 +462,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       instructions: instructions == null && nullToAbsent
           ? const Value.absent()
           : Value(instructions),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       isCustom: Value(isCustom),
     );
   }
@@ -464,6 +493,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
         serializer.fromJson<String>(json['weightUnit']),
       ),
       instructions: serializer.fromJson<String?>(json['instructions']),
+      note: serializer.fromJson<String?>(json['note']),
       isCustom: serializer.fromJson<bool>(json['isCustom']),
     );
   }
@@ -491,6 +521,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
         $ExercisesTable.$converterweightUnit.toJson(weightUnit),
       ),
       'instructions': serializer.toJson<String?>(instructions),
+      'note': serializer.toJson<String?>(note),
       'isCustom': serializer.toJson<bool>(isCustom),
     };
   }
@@ -508,6 +539,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     Value<int?> defaultRestSeconds = const Value.absent(),
     WeightUnit? weightUnit,
     Value<String?> instructions = const Value.absent(),
+    Value<String?> note = const Value.absent(),
     bool? isCustom,
   }) => Exercise(
     id: id ?? this.id,
@@ -524,6 +556,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
         : this.defaultRestSeconds,
     weightUnit: weightUnit ?? this.weightUnit,
     instructions: instructions.present ? instructions.value : this.instructions,
+    note: note.present ? note.value : this.note,
     isCustom: isCustom ?? this.isCustom,
   );
   Exercise copyWithCompanion(ExercisesCompanion data) {
@@ -550,6 +583,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       instructions: data.instructions.present
           ? data.instructions.value
           : this.instructions,
+      note: data.note.present ? data.note.value : this.note,
       isCustom: data.isCustom.present ? data.isCustom.value : this.isCustom,
     );
   }
@@ -569,6 +603,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           ..write('defaultRestSeconds: $defaultRestSeconds, ')
           ..write('weightUnit: $weightUnit, ')
           ..write('instructions: $instructions, ')
+          ..write('note: $note, ')
           ..write('isCustom: $isCustom')
           ..write(')'))
         .toString();
@@ -588,6 +623,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     defaultRestSeconds,
     weightUnit,
     instructions,
+    note,
     isCustom,
   );
   @override
@@ -606,6 +642,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           other.defaultRestSeconds == this.defaultRestSeconds &&
           other.weightUnit == this.weightUnit &&
           other.instructions == this.instructions &&
+          other.note == this.note &&
           other.isCustom == this.isCustom);
 }
 
@@ -622,6 +659,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
   final Value<int?> defaultRestSeconds;
   final Value<WeightUnit> weightUnit;
   final Value<String?> instructions;
+  final Value<String?> note;
   final Value<bool> isCustom;
   final Value<int> rowid;
   const ExercisesCompanion({
@@ -637,6 +675,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     this.defaultRestSeconds = const Value.absent(),
     this.weightUnit = const Value.absent(),
     this.instructions = const Value.absent(),
+    this.note = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -653,6 +692,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     this.defaultRestSeconds = const Value.absent(),
     this.weightUnit = const Value.absent(),
     this.instructions = const Value.absent(),
+    this.note = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : name = Value(name),
@@ -673,6 +713,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Expression<int>? defaultRestSeconds,
     Expression<String>? weightUnit,
     Expression<String>? instructions,
+    Expression<String>? note,
     Expression<bool>? isCustom,
     Expression<int>? rowid,
   }) {
@@ -690,6 +731,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
         'default_rest_seconds': defaultRestSeconds,
       if (weightUnit != null) 'weight_unit': weightUnit,
       if (instructions != null) 'instructions': instructions,
+      if (note != null) 'note': note,
       if (isCustom != null) 'is_custom': isCustom,
       if (rowid != null) 'rowid': rowid,
     });
@@ -708,6 +750,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Value<int?>? defaultRestSeconds,
     Value<WeightUnit>? weightUnit,
     Value<String?>? instructions,
+    Value<String?>? note,
     Value<bool>? isCustom,
     Value<int>? rowid,
   }) {
@@ -724,6 +767,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
       defaultRestSeconds: defaultRestSeconds ?? this.defaultRestSeconds,
       weightUnit: weightUnit ?? this.weightUnit,
       instructions: instructions ?? this.instructions,
+      note: note ?? this.note,
       isCustom: isCustom ?? this.isCustom,
       rowid: rowid ?? this.rowid,
     );
@@ -776,6 +820,9 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     if (instructions.present) {
       map['instructions'] = Variable<String>(instructions.value);
     }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
     if (isCustom.present) {
       map['is_custom'] = Variable<bool>(isCustom.value);
     }
@@ -800,6 +847,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
           ..write('defaultRestSeconds: $defaultRestSeconds, ')
           ..write('weightUnit: $weightUnit, ')
           ..write('instructions: $instructions, ')
+          ..write('note: $note, ')
           ..write('isCustom: $isCustom, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -2890,6 +2938,9 @@ class WorkoutExercise extends DataClass implements Insertable<WorkoutExercise> {
   final String workoutId;
   final String exerciseId;
   final int position;
+
+  /// Plus utilisée depuis la v4 : la note est désormais celle de l'exercice
+  /// (`exercises.note`), où la migration a recopié la plus récente.
   final String? notes;
   const WorkoutExercise({
     required this.id,
@@ -4178,6 +4229,7 @@ typedef $$ExercisesTableCreateCompanionBuilder = ExercisesCompanion Function({
   Value<int?> defaultRestSeconds,
   Value<WeightUnit> weightUnit,
   Value<String?> instructions,
+  Value<String?> note,
   Value<bool> isCustom,
   Value<int> rowid,
 });
@@ -4194,6 +4246,7 @@ typedef $$ExercisesTableUpdateCompanionBuilder = ExercisesCompanion Function({
   Value<int?> defaultRestSeconds,
   Value<WeightUnit> weightUnit,
   Value<String?> instructions,
+  Value<String?> note,
   Value<bool> isCustom,
   Value<int> rowid,
 });
@@ -4314,6 +4367,11 @@ class $$ExercisesTableFilterComposer
 
   ColumnFilters<String> get instructions => $composableBuilder(
     column: $table.instructions,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4442,6 +4500,11 @@ class $$ExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isCustom => $composableBuilder(
     column: $table.isCustom,
     builder: (column) => ColumnOrderings(column),
@@ -4504,6 +4567,9 @@ class $$ExercisesTableAnnotationComposer
     column: $table.instructions,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 
   GeneratedColumn<bool> get isCustom =>
       $composableBuilder(column: $table.isCustom, builder: (column) => column);
@@ -4603,6 +4669,7 @@ class $$ExercisesTableTableManager
                 Value<int?> defaultRestSeconds = const Value.absent(),
                 Value<WeightUnit> weightUnit = const Value.absent(),
                 Value<String?> instructions = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExercisesCompanion(
@@ -4618,6 +4685,7 @@ class $$ExercisesTableTableManager
                 defaultRestSeconds: defaultRestSeconds,
                 weightUnit: weightUnit,
                 instructions: instructions,
+                note: note,
                 isCustom: isCustom,
                 rowid: rowid,
               ),
@@ -4635,6 +4703,7 @@ class $$ExercisesTableTableManager
                 Value<int?> defaultRestSeconds = const Value.absent(),
                 Value<WeightUnit> weightUnit = const Value.absent(),
                 Value<String?> instructions = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExercisesCompanion.insert(
@@ -4650,6 +4719,7 @@ class $$ExercisesTableTableManager
                 defaultRestSeconds: defaultRestSeconds,
                 weightUnit: weightUnit,
                 instructions: instructions,
+                note: note,
                 isCustom: isCustom,
                 rowid: rowid,
               ),

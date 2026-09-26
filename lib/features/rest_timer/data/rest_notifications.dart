@@ -13,8 +13,14 @@ abstract interface class RestNotifications {
   /// Demande l'autorisation d'afficher des notifications (Android 13+).
   Future<void> requestPermission();
 
-  /// Programme la notification « Repos terminé » à l'heure [at].
-  Future<void> scheduleRestEnd(DateTime at, {required String nextExercise});
+  /// Programme la notification « Repos terminé » à l'heure [at], avec ou
+  /// sans son et vibration (ST-02).
+  Future<void> scheduleRestEnd(
+    DateTime at, {
+    required String nextExercise,
+    bool sound = true,
+    bool vibration = true,
+  });
 
   /// Annule la notification programmée, s'il y en a une.
   Future<void> cancelRestEnd();
@@ -23,7 +29,8 @@ abstract interface class RestNotifications {
 /// Implémentation réelle, avec flutter_local_notifications.
 ///
 /// La notification s'affiche que l'app soit ouverte ou non : avec le son et
-/// la vibration du téléphone, elle prévient dans les deux cas.
+/// la vibration du téléphone (sauf si on les coupe dans les réglages), elle
+/// prévient dans les deux cas.
 class LocalRestNotifications implements RestNotifications {
   final _plugin = FlutterLocalNotificationsPlugin();
   Future<void>? _initialization;
@@ -32,16 +39,34 @@ class LocalRestNotifications implements RestNotifications {
   /// la notification précédente.
   static const _restEndId = 1;
 
-  static const _details = NotificationDetails(
-    android: AndroidNotificationDetails(
-      'rest_timer',
-      'Fin du repos',
-      channelDescription: 'Prévient quand le temps de repos est écoulé',
-      importance: Importance.max,
-      priority: Priority.high,
-      icon: 'ic_stat_rest',
-    ),
-  );
+  /// Android fige le son et la vibration d'un « canal » de notifications à
+  /// sa création : il faut donc un canal par combinaison (ST-02).
+  static NotificationDetails _details({
+    required bool sound,
+    required bool vibration,
+  }) {
+    final (channelId, channelName) = switch ((sound, vibration)) {
+      (true, true) => ('rest_timer', 'Fin du repos'),
+      (true, false) => ('rest_timer_sound', 'Fin du repos (son seul)'),
+      (false, true) => (
+        'rest_timer_vibration',
+        'Fin du repos (vibration seule)',
+      ),
+      (false, false) => ('rest_timer_silent', 'Fin du repos (silencieuse)'),
+    };
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: 'Prévient quand le temps de repos est écoulé',
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: 'ic_stat_rest',
+        playSound: sound,
+        enableVibration: vibration,
+      ),
+    );
+  }
 
   AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
       .resolvePlatformSpecificImplementation<
@@ -66,6 +91,8 @@ class LocalRestNotifications implements RestNotifications {
   Future<void> scheduleRestEnd(
     DateTime at, {
     required String nextExercise,
+    bool sound = true,
+    bool vibration = true,
   }) async {
     try {
       await _ensureInitialized();
@@ -76,7 +103,7 @@ class LocalRestNotifications implements RestNotifications {
         id: _restEndId,
         // Heure absolue exprimée en UTC : pas besoin du fuseau du téléphone.
         scheduledDate: tz.TZDateTime.from(at.toUtc(), tz.UTC),
-        notificationDetails: _details,
+        notificationDetails: _details(sound: sound, vibration: vibration),
         androidScheduleMode: exact
             ? AndroidScheduleMode.exactAllowWhileIdle
             : AndroidScheduleMode.inexactAllowWhileIdle,

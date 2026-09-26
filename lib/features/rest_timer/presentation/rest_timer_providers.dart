@@ -1,6 +1,7 @@
 import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../settings/data/settings_repository.dart';
 import '../data/rest_notifications.dart';
 import '../data/rest_timer_repository.dart';
 import '../domain/rest_timer.dart';
@@ -14,16 +15,19 @@ final restTimerControllerProvider = Provider<RestTimerController>(
   (ref) => RestTimerController(
     ref.watch(restTimerRepositoryProvider),
     ref.watch(restNotificationsProvider),
+    ref.watch(settingsRepositoryProvider),
   ),
 );
 
 /// Démarre et arrête le minuteur de repos : état enregistré en base (RT-06)
-/// et notification de fin programmée (RT-05).
+/// et notification de fin programmée (RT-05), avec le son et la vibration
+/// choisis dans les réglages (ST-02).
 class RestTimerController {
-  RestTimerController(this._repository, this._notifications);
+  RestTimerController(this._repository, this._notifications, this._settings);
 
   final RestTimerRepository _repository;
   final RestNotifications _notifications;
+  final SettingsRepository _settings;
 
   /// Démarre (ou redémarre) le repos de la série [setId] (RT-02).
   /// Avec 0 seconde, le minuteur est simplement arrêté (RT-01).
@@ -37,7 +41,13 @@ class RestTimerController {
     await _repository.save(
       RestTimer(setId: setId, endsAt: endsAt, totalSeconds: seconds),
     );
-    await _notifications.scheduleRestEnd(endsAt, nextExercise: nextExercise);
+    final alert = await _settings.readRestAlert();
+    await _notifications.scheduleRestEnd(
+      endsAt,
+      nextExercise: nextExercise,
+      sound: alert.sound,
+      vibration: alert.vibration,
+    );
   }
 
   /// Arrête le minuteur (RT-04 : fin ou abandon de la séance).

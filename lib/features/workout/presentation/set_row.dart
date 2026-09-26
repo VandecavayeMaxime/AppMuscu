@@ -12,6 +12,7 @@ import '../../rest_timer/domain/rest_timer.dart';
 import '../../rest_timer/presentation/rest_timer_providers.dart';
 import '../../settings/data/settings_repository.dart';
 import '../data/workout_repository.dart';
+import '../domain/set_rules.dart';
 
 /// Fond d'une série validée (WO-08), repris par sa ligne de repos une fois
 /// le repos terminé : les deux forment un seul bloc coloré.
@@ -19,27 +20,30 @@ Color completedSetColor(ColorScheme colors) =>
     colors.primaryContainer.withValues(alpha: 0.6);
 
 /// Colonnes du tableau des séries (WO-05), partagées par l'en-tête et les
-/// lignes pour qu'elles restent alignées.
+/// lignes pour qu'elles restent alignées. Dans un modèle, il n'y a ni
+/// « Précédent » ni case de validation : [previous] et [check] sont absents.
 class SetColumns extends StatelessWidget {
   const SetColumns({
     super.key,
     required this.label,
-    required this.previous,
+    this.previous,
     required this.inputs,
-    required this.check,
+    this.check,
   });
 
   final Widget label;
-  final Widget previous;
+  final Widget? previous;
   final List<Widget> inputs;
-  final Widget check;
+  final Widget? check;
 
   @override
   Widget build(BuildContext context) {
+    final previous = this.previous;
+    final check = this.check;
     return Row(
       children: [
         SizedBox(width: 44, child: Center(child: label)),
-        Expanded(flex: 3, child: previous),
+        if (previous != null) Expanded(flex: 3, child: previous),
         for (final input in inputs)
           Expanded(
             flex: 2,
@@ -48,18 +52,104 @@ class SetColumns extends StatelessWidget {
               child: input,
             ),
           ),
-        SizedBox(width: 56, child: Center(child: check)),
+        if (check != null)
+          SizedBox(width: 56, child: Center(child: check))
+        else
+          const SizedBox(width: 12),
       ],
     );
   }
 }
 
-/// Titres des colonnes de saisie selon le type de suivi.
-List<String> inputTitles(Exercise exercise) => switch (exercise.trackingType) {
-  TrackingType.weightReps => [exercise.weightUnit.label, 'Reps'],
-  TrackingType.reps => ['Reps'],
-  TrackingType.duration => ['Durée'],
+/// Fond rouge révélé en balayant une série vers la gauche pour la supprimer
+/// (WO-11).
+class SwipeDeleteBackground extends StatelessWidget {
+  const SwipeDeleteBackground({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      color: colors.errorContainer,
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.only(right: 24),
+      child: Icon(Icons.delete_outline, color: colors.onErrorContainer),
+    );
+  }
+}
+
+/// Un champ de saisie d'une série, avec son clavier et ses caractères
+/// autorisés (WO-07).
+enum SetField {
+  weight(TextInputType.numberWithOptions(decimal: true), '[0-9.,]'),
+  reps(TextInputType.number, '[0-9]'),
+  duration(TextInputType.datetime, '[0-9:]');
+
+  const SetField(this.keyboard, this.allowedCharacters);
+
+  final TextInputType keyboard;
+  final String allowedCharacters;
+}
+
+/// Champs de saisie selon le type de suivi.
+List<SetField> setFieldsOf(TrackingType type) => switch (type) {
+  TrackingType.weightReps => [SetField.weight, SetField.reps],
+  TrackingType.reps => [SetField.reps],
+  TrackingType.duration => [SetField.duration],
 };
+
+/// Titres des colonnes de saisie selon le type de suivi.
+List<String> inputTitles(Exercise exercise) => [
+  for (final field in setFieldsOf(exercise.trackingType))
+    switch (field) {
+      SetField.weight => exercise.weightUnit.label,
+      SetField.reps => 'Reps',
+      SetField.duration => 'Durée',
+    },
+];
+
+/// Champ de saisie d'une valeur de série, avec un placeholder grisé
+/// ([hint]). Partagé par la séance et l'éditeur de modèle.
+class SetInputField extends StatelessWidget {
+  const SetInputField({
+    super.key,
+    required this.field,
+    required this.controller,
+    this.focusNode,
+    this.hint,
+    required this.onChanged,
+  });
+
+  final SetField field;
+  final TextEditingController controller;
+  final FocusNode? focusNode;
+  final String? hint;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      focusNode: focusNode,
+      keyboardType: field.keyboard,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(field.allowedCharacters)),
+      ],
+      textAlign: TextAlign.center,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        hintText: hint,
+        isDense: true,
+        filled: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+}
 
 /// Une ligne du tableau : numéro, Précédent, champs de saisie, bouton ✓.
 ///
@@ -146,6 +236,8 @@ class _SetRowState extends ConsumerState<SetRow> {
     final theme = Theme.of(context);
     final completed = widget.set.completedAt != null;
     final previous = widget.previous;
+    // Placeholders grisés : valeurs reprises si on valide sans saisir (RG-11).
+    final placeholders = placeholdersOf(widget.set, previous);
 
     return Container(
       color: completed ? completedSetColor(theme.colorScheme) : null,
@@ -167,49 +259,46 @@ class _SetRowState extends ConsumerState<SetRow> {
           ),
         ),
         inputs: [
-          if (widget.exercise.trackingType == TrackingType.weightReps)
-            _input(
-              controller: _weight,
-              focus: _weightFocus,
-              hint: previous?.weightKg == null
-                  ? null
-                  : formatWeight(previous!.weightKg!, _unit),
-              keyboard: const TextInputType.numberWithOptions(decimal: true),
-              allowed: RegExp('[0-9.,]'),
-              onChanged: (text) {
-                final value = parseDecimal(text);
-                _repository.updateSet(
+          for (final field in setFieldsOf(widget.exercise.trackingType))
+            switch (field) {
+              SetField.weight => SetInputField(
+                field: field,
+                controller: _weight,
+                focusNode: _weightFocus,
+                hint: placeholders.weightKg == null
+                    ? null
+                    : formatWeight(placeholders.weightKg!, _unit),
+                onChanged: (text) {
+                  final value = parseDecimal(text);
+                  _repository.updateSet(
+                    widget.set.id,
+                    weightKg: Value(value == null ? null : _unit.toKg(value)),
+                  );
+                },
+              ),
+              SetField.reps => SetInputField(
+                field: field,
+                controller: _reps,
+                focusNode: _repsFocus,
+                hint: placeholders.reps?.toString(),
+                onChanged: (text) => _repository.updateSet(
                   widget.set.id,
-                  weightKg: Value(value == null ? null : _unit.toKg(value)),
-                );
-              },
-            ),
-          if (widget.exercise.trackingType != TrackingType.duration)
-            _input(
-              controller: _reps,
-              focus: _repsFocus,
-              hint: previous?.reps?.toString(),
-              keyboard: TextInputType.number,
-              allowed: RegExp('[0-9]'),
-              onChanged: (text) => _repository.updateSet(
-                widget.set.id,
-                reps: Value(parseInteger(text)),
+                  reps: Value(parseInteger(text)),
+                ),
               ),
-            ),
-          if (widget.exercise.trackingType == TrackingType.duration)
-            _input(
-              controller: _duration,
-              focus: _durationFocus,
-              hint: previous?.durationSeconds == null
-                  ? null
-                  : formatDuration(previous!.durationSeconds!),
-              keyboard: TextInputType.datetime,
-              allowed: RegExp('[0-9:]'),
-              onChanged: (text) => _repository.updateSet(
-                widget.set.id,
-                durationSeconds: Value(parseDuration(text)),
+              SetField.duration => SetInputField(
+                field: field,
+                controller: _duration,
+                focusNode: _durationFocus,
+                hint: placeholders.durationSeconds == null
+                    ? null
+                    : formatDuration(placeholders.durationSeconds!),
+                onChanged: (text) => _repository.updateSet(
+                  widget.set.id,
+                  durationSeconds: Value(parseDuration(text)),
+                ),
               ),
-            ),
+            },
         ],
         check: IconButton(
           tooltip: completed ? 'Annuler la validation' : 'Valider la série',
@@ -223,35 +312,6 @@ class _SetRowState extends ConsumerState<SetRow> {
                 : theme.colorScheme.onSurfaceVariant,
           ),
           icon: const Icon(Icons.check),
-        ),
-      ),
-    );
-  }
-
-  Widget _input({
-    required TextEditingController controller,
-    required FocusNode focus,
-    required String? hint,
-    required TextInputType keyboard,
-    required RegExp allowed,
-    required ValueChanged<String> onChanged,
-  }) {
-    return TextField(
-      controller: controller,
-      focusNode: focus,
-      keyboardType: keyboard,
-      inputFormatters: [FilteringTextInputFormatter.allow(allowed)],
-      textAlign: TextAlign.center,
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        // Placeholder grisé : valeur reprise si on valide sans saisir (RG-11).
-        hintText: hint,
-        isDense: true,
-        filled: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
         ),
       ),
     );
@@ -288,13 +348,14 @@ class _SetRowState extends ConsumerState<SetRow> {
     }
 
     // Champ vide → valeur du placeholder (RG-11).
-    final previous = widget.previous;
+    final placeholders = placeholdersOf(widget.set, widget.previous);
     final typedWeight = parseDecimal(_weight.text);
     final weightKg = typedWeight != null
         ? _unit.toKg(typedWeight)
-        : previous?.weightKg;
-    final reps = parseInteger(_reps.text) ?? previous?.reps;
-    final duration = parseDuration(_duration.text) ?? previous?.durationSeconds;
+        : placeholders.weightKg;
+    final reps = parseInteger(_reps.text) ?? placeholders.reps;
+    final duration =
+        parseDuration(_duration.text) ?? placeholders.durationSeconds;
 
     final trackingType = widget.exercise.trackingType;
     final missing = switch (trackingType) {

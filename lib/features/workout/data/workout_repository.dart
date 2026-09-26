@@ -6,7 +6,6 @@ import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../domain/set_rules.dart';
 import '../domain/workout_details.dart';
-import '../domain/workout_naming.dart';
 
 // Les écrans qui utilisent le repository ont aussi besoin de ces modèles.
 export '../domain/workout_details.dart';
@@ -193,14 +192,62 @@ class WorkoutRepository {
 
   // ─── Séance ────────────────────────────────────────────────────────────────
 
-  /// Démarre une séance vide (WO-01), nommée selon l'heure (RG-05).
+  /// Démarre une séance depuis un modèle (WO-01, TP-05) : elle prend son nom
+  /// et reçoit ses exercices et ses séries, avec leur temps de repos et leurs
+  /// valeurs prévues (placeholders, RG-11).
+  ///
   /// Échoue si une séance est déjà en cours (WO-02, garanti par la base).
-  Future<Workout> startWorkout() {
-    return _db
-        .into(_db.workouts)
-        .insertReturning(
-          WorkoutsCompanion.insert(name: defaultWorkoutName(clock.now())),
-        );
+  Future<Workout> startWorkout(String templateId) {
+    return _db.transaction(() async {
+      final template = await (_db.select(
+        _db.templates,
+      )..where((t) => t.id.equals(templateId))).getSingle();
+      final workout = await _db
+          .into(_db.workouts)
+          .insertReturning(
+            WorkoutsCompanion.insert(
+              name: template.name,
+              templateId: Value(templateId),
+            ),
+          );
+
+      final entries =
+          await (_db.select(_db.templateExercises)
+                ..where((e) => e.templateId.equals(templateId))
+                ..orderBy([(e) => OrderingTerm.asc(e.position)]))
+              .get();
+      for (final (position, templateEntry) in entries.indexed) {
+        final entry = await _db
+            .into(_db.workoutExercises)
+            .insertReturning(
+              WorkoutExercisesCompanion.insert(
+                workoutId: workout.id,
+                exerciseId: templateEntry.exerciseId,
+                position: position,
+              ),
+            );
+        final sets =
+            await (_db.select(_db.templateSets)
+                  ..where((s) => s.templateExerciseId.equals(templateEntry.id))
+                  ..orderBy([(s) => OrderingTerm.asc(s.position)]))
+                .get();
+        for (final (setPosition, set) in sets.indexed) {
+          await _db
+              .into(_db.workoutSets)
+              .insert(
+                WorkoutSetsCompanion.insert(
+                  workoutExerciseId: entry.id,
+                  position: setPosition,
+                  restSeconds: Value(set.restSeconds),
+                  plannedWeightKg: Value(set.weightKg),
+                  plannedReps: Value(set.reps),
+                  plannedDurationSeconds: Value(set.durationSeconds),
+                ),
+              );
+        }
+      }
+      return workout;
+    });
   }
 
   /// Renomme la séance (WO-01).
@@ -423,6 +470,18 @@ class WorkoutRepository {
       WorkoutExercisesCompanion(notes: Value(text.isEmpty ? null : text)),
     );
     await _touchWorkoutOfEntry(workoutExerciseId);
+  }
+
+  /// Réordonne les exercices de la séance (WO-15) : [entryIds] donne les
+  /// lignes de workout_exercises dans le nouvel ordre.
+  Future<void> reorderExercises(String workoutId, List<String> entryIds) {
+    return _db.transaction(() async {
+      for (final (position, id) in entryIds.indexed) {
+        await (_db.update(_db.workoutExercises)..where((e) => e.id.equals(id)))
+            .write(WorkoutExercisesCompanion(position: Value(position)));
+      }
+      await _touchWorkout(workoutId);
+    });
   }
 
   /// Retire un exercice de la séance, avec ses séries (WO-13).

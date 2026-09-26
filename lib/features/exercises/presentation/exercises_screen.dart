@@ -8,8 +8,23 @@ import '../domain/exercise_enums.dart';
 import 'exercise_providers.dart';
 
 /// Onglet « Exercices » : bibliothèque, recherche et filtres (EX-02, EX-03).
+///
+/// Le même écran sert de sélecteur d'exercices (WO-04), pour la séance et
+/// pour les modèles : ainsi, les deux évoluent ensemble.
 class ExercisesScreen extends ConsumerStatefulWidget {
-  const ExercisesScreen({super.key});
+  /// L'onglet Exercices : toucher un exercice ouvre sa fiche.
+  const ExercisesScreen({super.key}) : pickerOwnerPath = null;
+
+  /// Le sélecteur, ouvert par-dessus l'écran situé à [ownerPath] (séance en
+  /// cours ou éditeur de modèle). Toucher un nom ouvre la fiche, la case à
+  /// cocher sélectionne l'exercice ; « Ajouter » renvoie les identifiants
+  /// choisis, dans l'ordre de sélection. Un exercice créé depuis le
+  /// sélecteur est sélectionné d'office.
+  const ExercisesScreen.picker({super.key, required String ownerPath})
+    : pickerOwnerPath = ownerPath;
+
+  /// Chemin de l'écran qui a ouvert le sélecteur ; `null` pour l'onglet.
+  final String? pickerOwnerPath;
 
   @override
   ConsumerState<ExercisesScreen> createState() => _ExercisesScreenState();
@@ -17,8 +32,15 @@ class ExercisesScreen extends ConsumerStatefulWidget {
 
 class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
   late final _searchController = TextEditingController(
-    text: ref.read(exerciseFilterProvider).search,
+    text: ref.read(exerciseFilterProvider(_mode)).search,
   );
+
+  /// Sélection en cours (sélecteur uniquement), dans l'ordre des coches.
+  final _selected = <String>[];
+
+  String? get _ownerPath => widget.pickerOwnerPath;
+  ExerciseListMode get _mode =>
+      _ownerPath == null ? ExerciseListMode.library : ExerciseListMode.picker;
 
   @override
   void dispose() {
@@ -28,15 +50,32 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filter = ref.watch(exerciseFilterProvider);
-    final filterNotifier = ref.read(exerciseFilterProvider.notifier);
-    final exercises = ref.watch(exerciseListProvider);
+    final filter = ref.watch(exerciseFilterProvider(_mode));
+    final filterNotifier = ref.read(exerciseFilterProvider(_mode).notifier);
+    final exercises = ref.watch(exerciseListProvider(_mode));
+    final ownerPath = _ownerPath;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Exercices')),
+      appBar: ownerPath == null
+          ? AppBar(title: const Text('Exercices'))
+          : AppBar(
+              title: const Text('Ajouter des exercices'),
+              actions: [
+                TextButton(
+                  onPressed: _selected.isEmpty
+                      ? null
+                      : () => context.pop(_selected),
+                  child: Text(
+                    _selected.isEmpty
+                        ? 'Ajouter'
+                        : 'Ajouter (${_selected.length})',
+                  ),
+                ),
+              ],
+            ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Nouvel exercice',
-        onPressed: () => context.go('/exercices/nouveau'),
+        onPressed: _createExercise,
         child: const Icon(Icons.add),
       ),
       body: Column(
@@ -101,8 +140,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                         bottom: 88,
                       ), // place du bouton +
                       itemCount: list.length,
-                      itemBuilder: (context, index) =>
-                          _ExerciseTile(list[index]),
+                      itemBuilder: (context, index) => _tile(list[index]),
                     ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => EmptyState(
@@ -116,15 +154,9 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
       ),
     );
   }
-}
 
-class _ExerciseTile extends StatelessWidget {
-  const _ExerciseTile(this.exercise);
-
-  final Exercise exercise;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _tile(Exercise exercise) {
+    final ownerPath = _ownerPath;
     return ListTile(
       leading: CircleAvatar(
         child: Text(exercise.name.characters.first.toUpperCase()),
@@ -133,8 +165,30 @@ class _ExerciseTile extends StatelessWidget {
       subtitle: Text(
         '${exercise.bodyPart.label} · ${exercise.equipment.label}',
       ),
-      onTap: () => context.go('/exercices/${exercise.id}'),
+      onTap: () => ownerPath == null
+          ? context.go('/exercices/${exercise.id}')
+          : context.push('$ownerPath/exercice/${exercise.id}'),
+      trailing: ownerPath == null
+          ? null
+          : Checkbox(
+              value: _selected.contains(exercise.id),
+              onChanged: (checked) => setState(() {
+                checked == true
+                    ? _selected.add(exercise.id)
+                    : _selected.remove(exercise.id);
+              }),
+            ),
     );
+  }
+
+  Future<void> _createExercise() async {
+    final ownerPath = _ownerPath;
+    if (ownerPath == null) {
+      context.go('/exercices/nouveau');
+      return;
+    }
+    final id = await context.push<String>('$ownerPath/nouvel-exercice');
+    if (id != null && mounted) setState(() => _selected.add(id));
   }
 }
 

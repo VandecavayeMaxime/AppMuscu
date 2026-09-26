@@ -15,3 +15,16 @@ bool isSetReady(WorkoutSet set, TrackingType trackingType) {
     TrackingType.duration => set.durationSeconds != null,
   };
 }
+
+/// Valeurs grisées des champs d'une série (RG-11), champ par champ : celle
+/// prévue par le modèle, sinon celle de la même série la dernière fois
+/// ([previous], colonne « Précédent »), sinon rien. Valider une série sans
+/// rien saisir reprend ces valeurs (WO-08).
+({double? weightKg, int? reps, int? durationSeconds}) placeholdersOf(
+  WorkoutSet set,
+  WorkoutSet? previous,
+) => (
+  weightKg: set.plannedWeightKg ?? previous?.weightKg,
+  reps: set.plannedReps ?? previous?.reps,
+  durationSeconds: set.plannedDurationSeconds ?? previous?.durationSeconds,
+);

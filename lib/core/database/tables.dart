@@ -155,6 +155,13 @@ class WorkoutSets extends Table with UuidPrimaryKey {
 
   /// `null` = série pas encore validée.
   DateTimeColumn get completedAt => dateTime().nullable()();
+
+  // Valeurs prévues par le modèle d'origine (TP-05), copiées au démarrage :
+  // elles s'affichent en gris dans les champs vides (RG-11). Modifier ou
+  // supprimer le modèle ensuite ne change donc pas la séance.
+  RealColumn get plannedWeightKg => real().nullable()();
+  IntColumn get plannedReps => integer().nullable()();
+  IntColumn get plannedDurationSeconds => integer().nullable()();
 }
 
 // ─── Réglages ────────────────────────────────────────────────────────────────

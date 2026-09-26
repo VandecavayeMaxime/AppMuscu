@@ -1,4 +1,5 @@
 import 'package:app_muscu/core/database/app_database.dart';
+import 'package:app_muscu/features/templates/data/template_repository.dart';
 import 'package:app_muscu/features/workout/domain/set_type.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -73,4 +74,40 @@ Future<void> addWorkout(
           ),
         );
   }
+}
+
+/// Ajoute un modèle sans exercice : le démarrer donne une séance vide, à
+/// compléter avec « Ajouter des exercices ». (L'éditeur exige au moins un
+/// exercice, la base non : c'est un raccourci pour les tests.)
+Future<String> addEmptyTemplate(
+  AppDatabase db, {
+  String name = 'Séance libre',
+}) async {
+  final template = await db
+      .into(db.templates)
+      .insertReturning(TemplatesCompanion.insert(name: name));
+  return template.id;
+}
+
+/// Ajoute un modèle d'un seul exercice, dont les séries prévues sont données
+/// sous la forme (kg, reps) : `addTemplate(db, sets: [(80, 8), (80, null)])`.
+Future<String> addTemplate(
+  AppDatabase db, {
+  String name = 'Push',
+  String exerciseId = benchPressId,
+  List<(double?, int?)> sets = const [(80, 8)],
+}) async {
+  final exercise = await (db.select(
+    db.exercises,
+  )..where((e) => e.id.equals(exerciseId))).getSingle();
+  return TemplateRepository(db).saveTemplate(
+    TemplateDraft(
+      name: name,
+      exercises: [
+        DraftExercise(exercise, [
+          for (final (kg, reps) in sets) DraftSet(weightKg: kg, reps: reps),
+        ]),
+      ],
+    ),
+  );
 }

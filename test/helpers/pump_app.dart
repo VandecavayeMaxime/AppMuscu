@@ -55,6 +55,37 @@ FakeRestNotifications notificationsOf(WidgetTester tester) =>
             .read(restNotificationsProvider)
         as FakeRestNotifications;
 
+/// Dans le sélecteur d'exercices, coche l'exercice [name], en faisant
+/// d'abord défiler la liste jusqu'à lui.
+Future<void> checkExercise(WidgetTester tester, String name) async {
+  final checkbox = find.descendant(
+    of: find.widgetWithText(ListTile, name),
+    matching: find.byType(Checkbox),
+  );
+  await tester.ensureVisible(checkbox);
+  await tester.pumpAndSettle();
+  await tester.tap(checkbox);
+  await tester.pump();
+}
+
+/// En mode « réorganiser », fait glisser l'exercice [name] par sa poignée
+/// jusqu'en haut de la liste.
+Future<void> dragUp(WidgetTester tester, String name) async {
+  final handle = find.descendant(
+    of: find.widgetWithText(ListTile, name),
+    matching: find.byIcon(Icons.drag_handle),
+  );
+  final gesture = await tester.startGesture(tester.getCenter(handle));
+  await tester.pump();
+  // Par petits pas, comme un vrai doigt : la liste suit le mouvement.
+  for (var i = 0; i < 10; i++) {
+    await gesture.moveBy(const Offset(0, -20));
+    await tester.pump();
+  }
+  await gesture.up();
+  await tester.pumpAndSettle();
+}
+
 /// Trouve un onglet par son libellé, dans la barre du bas uniquement.
 Finder tab(String label) =>
     find.descendant(of: find.byType(NavigationBar), matching: find.text(label));

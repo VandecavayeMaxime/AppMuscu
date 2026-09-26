@@ -57,7 +57,7 @@ build.yaml                  # configuration de Drift (make-migrations)
 **Règles d'architecture**
 
 1. L'UI n'accède jamais directement à Drift : elle passe par des *repositories* fournis par Riverpod.
-2. Les règles métier (volume, numérotation, Précédent, nom par défaut, temps de repos effectif, nettoyage de fin de séance, calculs du minuteur) sont des **fonctions Dart pures** dans `domain/`, testables sans Flutter.
+2. Les règles métier (volume, numérotation, Précédent, placeholders, temps de repos effectif, nettoyage de fin de séance, calculs du minuteur) sont des **fonctions Dart pures** dans `domain/`, testables sans Flutter.
 3. **La base est la source de vérité.** L'UI observe des flux (`watch`). Une modification est écrite en base, puis l'écran se met à jour tout seul. C'est ce qui garantit WO-21 et NF-02.
 
 ### Navigation (go_router)
@@ -69,18 +69,22 @@ Toutes les routes sont déclarées dans `lib/app/router.dart`. Le routeur est fo
 | `/seance` | Onglet Séance : démarrer, liste des modèles | Onglet 1 |
 | `/seance/modeles/nouveau` | Créer un modèle | Onglet 1 |
 | `/seance/modeles/:id` | Modifier un modèle | Onglet 1 |
+| `…/ajouter`, `…/exercice/:exerciseId` et `…/nouvel-exercice` sous chacune des deux routes précédentes | Sélecteur d'exercices, fiche en lecture seule et création d'exercice, pour l'éditeur de modèle | Onglet 1 |
 | `/exercices` | Onglet Exercices : bibliothèque | Onglet 2 |
 | `/exercices/nouveau` | Créer un exercice | Onglet 2 |
 | `/exercices/:id` | Fiche exercice : onglets À propos / Historique (EX-07) | Onglet 2 |
 | `/exercices/:id/modifier` | Modifier un exercice perso | Onglet 2 |
 | `/reglages` | Onglet Réglages | Onglet 3 |
 | `/seance-en-cours` | Séance en cours | Plein écran, par-dessus les onglets |
-| `/seance-en-cours/ajouter` | Sélecteur d'exercices (multi-sélection) | Plein écran, renvoie la sélection |
-| `/seance-en-cours/exercice/:id` | Fiche d'un exercice ouverte pendant la séance (WO-22), sans menu Modifier / Supprimer | Plein écran |
+| `/seance-en-cours/ajouter` | Sélecteur d'exercices : l'onglet Exercices en mode sélection (`ExercisesScreen.picker`) | Plein écran, renvoie la sélection |
+| `/seance-en-cours/nouvel-exercice` | Créer un exercice depuis le sélecteur | Plein écran, renvoie l'identifiant créé |
+| `/seance-en-cours/exercice/:exerciseId` | Fiche d'un exercice ouverte pendant la séance (WO-22), sans menu Modifier / Supprimer | Plein écran |
 | `/resume/:workoutId` | Résumé de fin de séance | Plein écran |
 
 - Les 3 onglets sont les branches d'un `StatefulShellRoute` : chaque onglet garde ses écrans ouverts quand on passe à un autre et qu'on revient.
 - La séance en cours et le résumé sont déclarés **hors** des onglets, sur le navigateur racine. Ils s'affichent donc en plein écran.
+- Le sélecteur d'exercices, la fiche en lecture seule et la création d'exercice sont déclarés une seule fois (`_exerciseRoutes` dans `router.dart`) et rattachés sous la séance en cours comme sous l'éditeur de modèle. Le sélecteur est **le même écran que l'onglet Exercices** (`ExercisesScreen.picker(ownerPath:)`) : il reçoit le chemin de l'écran qui l'ouvre, pour y rattacher fiches et création. Chaque usage a ses propres critères de recherche (`exerciseFilterProvider(ExerciseListMode.library / picker)`, `.family` + `.autoDispose`).
+- L'aperçu d'un modèle (feuille du bas) s'ouvre sur le navigateur racine (`useRootNavigator: true`), pour passer par-dessus la barre des onglets.
 - La barre de séance réduite (WO-20) fait partie de l'écran qui contient les onglets : elle reste visible dans les 3 onglets.
 - Toucher la notification de fin de repos ouvre l'adresse `/seance-en-cours` (lien profond).
 
@@ -156,6 +160,7 @@ erDiagram
 | duration_seconds | INTEGER NULL | |
 | rest_seconds | INTEGER NULL | temps de repos propre à la série. NULL → défaut de l'exercice → réglage global (RG-09) |
 | completed_at | INTEGER NULL | **NULL = non validée** |
+| planned_weight_kg, planned_reps, planned_duration_seconds | REAL / INTEGER NULL | valeurs prévues par le modèle, copiées au démarrage (TP-05) : placeholders (RG-11). *Ajoutées en v3* |
 
 **settings** (clé/valeur) : réglages (ST-01 à ST-04) **et** état du minuteur (`rest_set_id`, `rest_ends_at`, `rest_total_seconds`) pour qu'il survive à l'arrêt de l'app et se réaffiche sous la bonne série (RT-03, RT-06).
 
@@ -208,6 +213,16 @@ Code : `lib/features/rest_timer/` (domain : `RestTimer`, `effectiveRestSeconds` 
 - Pas encore de lien profond depuis la notification : la toucher rouvre simplement l'app là où elle était (en général l'écran de séance).
 - Tests : `testApp()` remplace les notifications par `FakeRestNotifications` (test/helpers), qui note les appels ; `notificationsOf(tester)` la récupère.
 
+### Modèles (TP)
+Code : `lib/features/templates/` (domain : `TemplateDetails`, `TemplateDraft`, `workoutDiffersFromTemplate`, `templatePreview` ; data : `TemplateRepository` ; presentation : `TemplateSection`, `TemplateEditorScreen`).
+
+- **Éditeur = brouillon en mémoire.** Contrairement à la séance, écrite à chaque saisie, un modèle est modifié dans un `TemplateDraft` (objets Dart modifiables) et enregistré d'un bloc par « Enregistrer ». `saveTemplate` travaille dans une **transaction** : il remplace le nom, supprime les exercices du modèle (leurs séries partent avec, clé étrangère `ON DELETE CASCADE`) et réinsère tout le contenu. Un `PopScope` bloque le retour tant qu'il reste des modifications et demande confirmation.
+- **Widgets partagés avec la séance** : `SetColumns` (colonnes « Précédent » et ✓ facultatives), `SetInputField` et `setFieldsOf` (champs selon le type de suivi), `PlainRestLine` et `showRestPicker` (ligne et choix du repos), `SwipeDeleteBackground`, `showConfirmDialog`.
+- **Démarrer (WO-01, TP-05)** : il n'y a plus de séance vide. `WorkoutRepository.startWorkout(templateId)` copie, dans une transaction, les exercices et les séries du modèle. Les kg/reps/durées prévus vont dans les colonnes `planned_*` de `workout_sets` : la séance ne dépend plus du modèle ensuite (modifié ou supprimé). `placeholdersOf` (domain) applique RG-11 champ par champ : prévu, sinon Précédent.
+- **Liste (TP-02)** : une seule requête (modèles → exercices → séries) avec une **sous-requête corrélée** pour la dernière utilisation : `MAX(workouts.started_at)` des séances terminées du modèle. Drift surveille aussi les tables de la sous-requête : la carte se met à jour quand une séance se termine.
+- **Fin de séance (TP-07)** : le résumé compare les séries validées au modèle (`workoutDiffersFromTemplate` : exercices et ordre, nombre de séries, valeurs du type de suivi, repos). « Mettre à jour le modèle » = `saveTemplate` avec `TemplateDraft.fromWorkout`.
+- **Réorganiser (WO-15, TP-01)** : `ExerciseReorderList` (workout/presentation), partagé par la séance et l'éditeur, remplace la liste tant que le mode est actif : une ligne par exercice dans un `ReorderableListView`, poignée ≡ (`ReorderableDragStartListener`, immédiat) ou appui long sur la ligne. Côté séance, l'ordre affiché est gardé en mémoire (`_order`) pendant que `reorderExercises` réécrit les positions : pas de saut en attendant la base.
+
 ### Migrations (NF-08)
 
 La base installée sur le téléphone doit évoluer **sans perte de données** à chaque nouvelle version de l'app. On utilise l'outil officiel de Drift :
@@ -225,6 +240,7 @@ Configuration dans `build.yaml`. Historique des versions :
 |---|---|
 | v1 | Structure initiale (M1) |
 | v2 | Fiche exercice : `notes` → `instructions`, ajout de `weight_unit`, consignes des 10 exercices intégrés |
+| v3 | Modèles : ajout de `planned_weight_kg`, `planned_reps`, `planned_duration_seconds` à `workout_sets` |
 
 ### Bibliothèque initiale (EX-01)
 - `lib/core/database/seed/built_in_exercises.dart` contient les 10 exercices de [SPEC §5.1](SPEC.md#51-bibliothèque-dexercices-ex), insérés au premier lancement (`onCreate`). On a choisi un fichier Dart plutôt que JSON : les valeurs d'enum sont vérifiées à la compilation, et il n'y a aucun fichier à charger. Chaque exercice a un **UUID fixe**, ce qui permet aux versions suivantes d'ajouter ou corriger des exercices intégrés, par une migration, sans créer de doublons.
@@ -237,9 +253,9 @@ Configuration dans `build.yaml`. Historique des versions :
 
 | Niveau | Quoi | Outil |
 |---|---|---|
-| Unitaire (domaine) | Volume, numérotation, nom par défaut, placeholder, temps de repos effectif, nettoyage de fin de séance, calculs du minuteur | `test` + horloge factice (`clock`) |
-| Unitaire (données) | Requête Précédent, contrainte « une seule séance en cours », suppression douce, migrations, seed | Drift en mémoire (`NativeDatabase.memory()`) |
-| Widget | Parcours complets à travers l'app : chercher et créer un exercice (M2) ; ajouter un exercice → remplir une série → valider → la ligne de repos sous la série passe « en cours » (M3-M4) | `flutter_test` + `testApp()` (test/helpers/pump_app.dart) |
+| Unitaire (domaine) | Volume, numérotation, placeholder, temps de repos effectif, nettoyage de fin de séance, calculs du minuteur, différences séance / modèle, brouillon de modèle | `test` + horloge factice (`clock`) |
+| Unitaire (données) | Requête Précédent, contrainte « une seule séance en cours », suppression douce, migrations, seed, enregistrement des modèles et démarrage depuis un modèle | Drift en mémoire (`NativeDatabase.memory()`) |
+| Widget | Parcours complets à travers l'app : chercher et créer un exercice (M2) ; ajouter un exercice → remplir une série → valider → la ligne de repos sous la série passe « en cours » (M3-M4) ; créer un modèle → le démarrer → le mettre à jour depuis le résumé, réorganiser par glisser-déposer (M5) | `flutter_test` + `testApp()`, `checkExercise()`, `dragUp()` (test/helpers/pump_app.dart), `addWorkout()`, `addTemplate()` et `addEmptyTemplate()` (test/helpers/test_database.dart). Les tests de la séance démarrent d'un modèle vide, « Séance libre » |
 
 **Pièges des tests de widgets avec Drift**, gérés par `testApp()` :
 - l'app doit être **démontée à l'intérieur du test**, suivi d'un `pump(Duration.zero)`. Drift ferme ses flux avec un minuteur de durée nulle, sinon le test échoue avec « A Timer is still pending » ;
@@ -247,7 +263,8 @@ Configuration dans `build.yaml`. Historique des versions :
 - une liste n'affiche que ses éléments visibles, donc l'écran de test fait 360 × 1200 dp ;
 - lancer les tests avec `flutter test --timeout 60s`, pour qu'un test bloqué échoue vite au lieu d'attendre 10 minutes ;
 - les chronomètres passent par `clockTickProvider`, que `testApp()` remplace par un flux immobile : sinon `pumpAndSettle` ne se termine jamais ;
-- `tester.pageBack()` cherche le bouton retour de `flutter/material`, pas celui de `material_ui` : il faut utiliser `tester.tap(find.byType(BackButton))`.
+- `tester.pageBack()` cherche le bouton retour de `flutter/material`, pas celui de `material_ui` : il faut utiliser `tester.tap(find.byType(BackButton))` ;
+- après `enterText`, faire un `pump()` avant un geste qui dépend de l'écran redessiné (ex. le retour bloqué par `PopScope` dès la première modification) : sinon le geste part dans la même image, avec l'ancien état.
 | Manuel (téléphone) | Minuteur écran verrouillé, app tuée en pleine séance, reprise | Checklist à chaque jalon |
 
 ## 6. Environnement de développement (Windows)
@@ -269,9 +286,9 @@ Chaque jalon se termine par quelque chose de **testable sur le téléphone**. À
 | **M0 — Setup** ✅ | Installation, `flutter create`, lints, arborescence, thème clair/sombre, 3 onglets vides avec go_router, git | — | Bases de Dart, widgets, `StatelessWidget` / `StatefulWidget`, *hot reload*, `Scaffold`, `NavigationBar`, routes go_router et `StatefulShellRoute` | L'app démarre sur le téléphone avec 3 onglets |
 | **M1 — Données** ✅ | Schéma Drift, index, seed des 10 exercices, repositories, tests unitaires | NF-07, NF-08, RG-* | Classes Dart, `async` / `Future` / `Stream`, SQL avec Drift, génération de code, tests unitaires | Tests verts |
 | **M2 — Exercices** ✅ | Liste, recherche, filtres, création / édition / archivage ; fiche exercice (À propos, Historique, préférences kg/lb et repos) ; migration v1 → v2 | EX-01 → EX-10 | `ListView`, formulaires et validation, routes avec paramètres (`/exercices/:id`), Riverpod (providers, `Notifier`, `.family`), onglets (`TabBar`), migrations de base | Parcourir, chercher, créer des exercices, consulter leur fiche |
-| **M3 — Séance** ✅ (sauf WO-15/16, reportés ; WO-20 au M6) | Séance vide, séries, Précédent, validation, fin, résumé, reprise après arrêt | WO-01 → WO-21 (M/S) | État complexe, flux de la base dans l'UI (`StreamProvider`), `TextEditingController`, gestes (balayage, glisser-déposer), dialogues | 🏋️ **Première vraie séance à la salle** |
-| **M4 — Minuteur** | Ligne de repos sous chaque série, temps de repos par série, notification de fin de repos (compteur compact RT-08 reporté au M6) | RT-01 → RT-07 | Interfaces et fausses implémentations pour les tests, permissions Android, notifications locales programmées, configuration Gradle et manifeste | Repos notifié téléphone verrouillé |
-| **M5 — Modèles** | Création, modification, suppression, démarrer depuis un modèle, mise à jour en fin de séance | TP-01 → TP-07 | Réutiliser des widgets, transactions en base, renvoyer un résultat d'un écran | Lancer « Push » en 1 tap |
+| **M3 — Séance** ✅ (sauf WO-16, reportée ; WO-15 fait au M5 ; WO-20 au M6) | Séance vide (retirée au M5), séries, Précédent, validation, fin, résumé, reprise après arrêt | WO-01 → WO-21 (M/S) | État complexe, flux de la base dans l'UI (`StreamProvider`), `TextEditingController`, gestes (balayage, glisser-déposer), dialogues | 🏋️ **Première vraie séance à la salle** |
+| **M4 — Minuteur** ✅ | Ligne de repos sous chaque série, temps de repos par série, notification de fin de repos (compteur compact RT-08 reporté au M6) | RT-01 → RT-07 | Interfaces et fausses implémentations pour les tests, permissions Android, notifications locales programmées, configuration Gradle et manifeste | Repos notifié téléphone verrouillé |
+| **M5 — Modèles** ✅ | Création, modification, duplication, suppression, démarrer depuis un modèle (aperçu puis « Démarrer »), mise à jour depuis le résumé ; plus de séance vide ; sélecteur = onglet Exercices ; réorganiser par glisser-déposer ; migration v2 → v3 | TP-01 → TP-07 (sauf TP-06, supprimée), WO-15 | Réutiliser des widgets, transactions en base, sous-requêtes, brouillon en mémoire et `PopScope`, renvoyer un résultat d'un écran | Lancer « Push » depuis l'onglet Séance |
 | **M6 — Réglages et finitions** | Réglages, séance réduite, ergonomie, performance, APK release | ST-*, WO-20, NF-03 → NF-05 | Thèmes, préférences, compilation release et signature d'APK | APK installé pour un usage quotidien |
 
 ## 8. Risques

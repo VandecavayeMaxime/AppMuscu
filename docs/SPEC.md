@@ -13,7 +13,7 @@ Application mobile de suivi de musculation inspirée de **Strong** : noter vite 
 
 1. Enregistrer une séance complète plus vite que sur papier.
 2. Toujours voir ce qu'on a fait **la dernière fois** sur un exercice (colonne « Précédent »).
-3. Démarrer une séance type **en 1 tap** depuis un modèle.
+3. Démarrer une séance type **en deux gestes** depuis un modèle (carte, puis « Démarrer »).
 4. **Ne jamais perdre de données** (app fermée, batterie vide, appel entrant).
 
 ### Hors périmètre du MVP
@@ -53,7 +53,7 @@ Barre d'onglets en bas, 3 entrées :
 
 | Onglet | Contenu |
 |---|---|
-| **Séance** | Bouton « Démarrer une séance vide », liste des modèles, création de modèle |
+| **Séance** | Séance en cours (s'il y en a une), liste des modèles, création de modèle. Toute séance démarre d'un modèle |
 | **Exercices** | Bibliothèque, recherche, filtres, exercices perso |
 | **Réglages** | Temps de repos par défaut, vibration/son, thème |
 
@@ -82,6 +82,43 @@ Toucher un exercice, dans la bibliothèque ou depuis une séance (WO-22), ouvre 
 ```
 
 Le menu ⋯ (Modifier, Supprimer) n'existe que pour les exercices perso.
+
+### Maquette : modèles (onglet Séance et éditeur)
+
+```
+┌──────────────────────────────────┐      ┌──────────────────────────────────┐
+│ Séance                           │      │ ←  Modifier le modèle  [Enreg.]  │
+├──────────────────────────────────┤      ├──────────────────────────────────┤
+│ Modèles              + Nouveau   │      │ Nom du modèle                    │
+│ ┌──────────────────────────────┐ │      │ Push                             │
+│ │ Push                      ⋯  │ │      │                                  │
+│ │ 3 × Développé couché (barre) │ │      │ Développé couché (barre)      ⋯  │
+│ │ 3 × Développé militaire      │ │      │ Série        kg        Reps      │
+│ │ 4 × Squat (barre)            │ │      │   1       [ 80  ]    [  8  ]     │
+│ │ Il y a 3 jours               │ │      │ ───────────── 2:00 ───────────── │
+│ └──────────────────────────────┘ │      │   2       [ 80  ]    [  8  ]     │
+│                                  │      │ ───────────── 2:00 ───────────── │
+│                                  │      │        + Ajouter une série       │
+│  toucher → aperçu + [▶ Démarrer] │      │    [ + Ajouter des exercices ]   │
+└──────────────────────────────────┘      └──────────────────────────────────┘
+```
+
+Menu ⋯ d'une carte : Modifier, Dupliquer, Supprimer. Menu ⋯ d'un exercice dans l'éditeur : Réorganiser, Retirer du modèle.
+
+### Maquette : réorganiser les exercices (séance et éditeur de modèle)
+
+```
+Appui long sur le nom d'un exercice (ou ⋯ → Réorganiser) :
+┌──────────────────────────────────┐
+│ Glisse les exercices pour   [OK] │
+│ changer leur ordre               │
+├──────────────────────────────────┤
+│ ≡  Développé couché (barre)      │
+│ ≡  Squat (barre)                 │
+│ ≡  Tractions                     │
+└──────────────────────────────────┘
+OK → les séries réapparaissent
+```
 
 ### Maquette : séance en cours
 
@@ -170,10 +207,10 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 
 | ID | Exigence | Prio |
 |---|---|---|
-| WO-01 | Démarrer une séance vide. Son nom par défaut dépend de l'heure (RG-05) et reste modifiable. | M |
+| WO-01 | Une séance démarre toujours **depuis un modèle** (TP-05) et prend son nom, qui reste modifiable. *Plus de séance vide (D14).* | M |
 | WO-02 | Une seule séance en cours à la fois. Si on en démarre une autre, l'app propose : « Reprendre la séance en cours » ou « L'abandonner et démarrer ». | M |
 | WO-03 | Un chronomètre affiche le temps écoulé depuis le début de la séance. | M |
-| WO-04 | Ajouter un ou plusieurs exercices via un sélecteur multi-sélection avec recherche. Dans le sélecteur, toucher le nom d'un exercice ouvre sa fiche, et la case à cocher le sélectionne ; la sélection est conservée au retour de la fiche. Chaque exercice ajouté arrive avec 1 série vide. | M |
+| WO-04 | Ajouter un ou plusieurs exercices via un sélecteur multi-sélection : c'est **l'onglet Exercices** lui-même (recherche, filtres, création), avec une case à cocher par exercice. Toucher le nom d'un exercice ouvre sa fiche, la case le sélectionne ; la sélection est conservée au retour de la fiche. Un exercice créé depuis le sélecteur est coché d'office. Chaque exercice ajouté arrive avec 1 série vide. Même sélecteur dans l'éditeur de modèle. | M |
 | WO-05 | Chaque exercice affiche un tableau de séries : Série, Précédent, colonnes du type de suivi, case de validation ✓. Chaque série est suivie de sa ligne de repos (RT-03). | M |
 | WO-06 | La colonne **Précédent** affiche les valeurs de la série de même rang lors de la dernière séance contenant l'exercice (RG-03, RG-04), ou « — » si aucune. Taper dessus recopie ces valeurs dans la série. | M |
 | WO-07 | Les nombres se saisissent au pavé numérique. Le poids accepte les décimales, avec la virgule ou le point. Un champ vide affiche un placeholder grisé (RG-11). | M |
@@ -183,7 +220,7 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | WO-11 | Supprimer une série en la balayant vers la gauche, depuis la colonne « Série » ou « Précédent » : sur un champ de saisie, le glissement sélectionne du texte. Les séries sont renumérotées automatiquement. | M |
 | WO-13 | Le menu ⋯ d'un exercice permet d'ajouter une note, de régler d'un coup le temps de repos de **toutes** ses séries, et de retirer l'exercice de la séance. | M |
 | WO-14 | Remplacer un exercice par un autre en gardant les séries (depuis le menu ⋯). | C |
-| WO-15 | Réordonner les exercices par glisser-déposer. | S |
+| WO-15 | Réordonner les exercices par glisser-déposer : un appui long sur le nom d'un exercice (ou ⋯ → « Réorganiser ») réduit tous les exercices à une ligne ; on les fait glisser par la poignée ≡, puis « OK » rend l'affichage normal. Même geste dans l'éditeur de modèle. | S |
 | WO-16 | Ajouter une note à la séance (texte libre). | S |
 | WO-17 | **Terminer la séance.** Une série non validée est dite *remplie* si toutes les valeurs de son type de suivi sont saisies (kg et reps, reps, ou durée). Les séries non validées vides ou incomplètes sont supprimées sans rien demander. S'il reste des séries remplies, une fenêtre simple, sans détail série par série, propose « Compléter » (les valider), « Jeter » (seulement s'il y a déjà au moins une série validée) ou « Annuler ». Les exercices qui n'ont plus aucune série sont retirés. S'il n'y a ni série validée ni série remplie, la séance ne peut pas être terminée : l'app propose de l'abandonner. | M |
 | WO-18 | Après la fin, un **écran de résumé** affiche le nom, la date et les horaires (début → fin), la durée, le nombre d'exercices et de séries, et le volume total. Puis, pour chaque exercice : toutes ses séries validées (★ = meilleure, RG-13) et la **comparaison avec la dernière fois**, c'est-à-dire l'évolution du total (volume en kg, reps ou durée selon le type de suivi) avec son écart, et celle de la meilleure série (▲ / ▼ / =), avec la meilleure série de la dernière fois. « Première fois avec cet exercice » s'il n'y a pas de séance précédente. | M |
@@ -210,13 +247,13 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 
 | ID | Exigence | Prio |
 |---|---|---|
-| TP-01 | Créer un modèle : nom, exercices ordonnés, séries prévues (kg, reps ou durée, **temps de repos**), note. | M |
-| TP-02 | L'onglet Séance liste les modèles. Chaque carte affiche le nom, un aperçu des exercices (« 3 × Développé couché, 4 × Squat… ») et la date de dernière utilisation. | M |
-| TP-03 | Modifier, renommer ou supprimer un modèle (avec confirmation). Supprimer un modèle ne touche pas aux séances passées. | M |
-| TP-04 | Dupliquer un modèle. | S |
-| TP-05 | **Démarrer une séance depuis un modèle** : la séance reprend le nom, les exercices et les séries (nombre, temps de repos) du modèle. Les kg/reps du modèle deviennent les placeholders (RG-11). | M |
-| TP-06 | Créer un modèle à partir d'une séance terminée, depuis l'écran de résumé. | S |
-| TP-07 | Quand on termine une séance issue d'un modèle et que les exercices, le nombre de séries ou les valeurs ont changé, l'app propose « Mettre à jour le modèle » ou « Garder le modèle tel quel ». | S |
+| TP-01 | Créer un modèle : nom, exercices ordonnés (glisser-déposer, comme WO-15), séries prévues (kg, reps ou durée, **temps de repos**), toutes facultatives. L'éditeur a la présentation de la séance, sans « Précédent » ni case ✓. Il faut un nom et au moins un exercice ; chaque exercice garde au moins une série. Les modifications ne sont enregistrées qu'avec « Enregistrer » ; quitter avant demande confirmation. *La note de modèle est reportée avec la note de séance (WO-16).* | M |
+| TP-02 | L'onglet Séance liste les modèles. Chaque carte affiche le nom, un aperçu des exercices, un par ligne (« 3 × Développé couché », « 4 × Squat »…) et la date de dernière utilisation (« Hier », « Il y a 3 jours », « Jamais utilisé »). | M |
+| TP-03 | Modifier, renommer ou supprimer un modèle (avec confirmation), depuis le menu ⋯ de sa carte. Supprimer un modèle ne touche pas aux séances passées. | M |
+| TP-04 | Dupliquer un modèle (« Push (copie) », en fin de liste). | S |
+| TP-05 | **Démarrer une séance depuis un modèle** : toucher la carte ouvre un aperçu avec « Démarrer la séance » (WO-02 s'applique). La séance reprend le nom, les exercices et les séries (nombre, temps de repos) du modèle. Les kg/reps du modèle deviennent les placeholders (RG-11) ; ils sont copiés dans la séance, que modifier le modèle ensuite ne change pas. | M |
+| ~~TP-06~~ | ~~Créer un modèle à partir d'une séance terminée.~~ *Supprimée (D14) : toute séance vient d'un modèle.* | — |
+| TP-07 | Quand une séance issue d'un modèle diffère de ce modèle (exercices, ordre, nombre de séries, valeurs réalisées ou temps de repos), le résumé affiche « La séance diffère du modèle » avec un bouton « Mettre à jour le modèle ». Le modèle prend alors les séries validées de la séance. Sans action, il ne change pas. | S |
 | TP-08 | Réordonner les modèles. | C |
 
 ### 5.5 Réglages (ST)
@@ -236,16 +273,17 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | RG-02 | **Numérotation** : les séries d'un exercice sont numérotées 1, 2, 3… dans l'ordre. |
 | RG-03 | **Correspondance « Précédent »** : la k-ième série d'un exercice (tous types confondus, dans l'ordre) correspond à la k-ième série du même exercice dans la séance de référence (RG-04). |
 | RG-04 | **Séance de référence** d'un exercice : la séance terminée et non supprimée la plus récente (par date de début) qui contient au moins une série validée de cet exercice. La séance en cours est exclue. |
-| RG-05 | **Nom par défaut** : 5h00–11h59 « Séance du matin », 12h00–17h59 « Séance de l'après-midi », 18h00–4h59 « Séance du soir ». Une séance démarrée depuis un modèle prend le nom du modèle. |
+| RG-05 | **Nom d'une séance** = nom du modèle dont elle démarre. *(Le nom selon l'heure, « Séance du soir »…, a disparu avec la séance vide, D14.)* |
 | RG-06 | **Bornes de saisie** : poids de 0 à 1 000 kg, au centième près. Reps : entier de 0 à 999. Durée : de 0 s à 23:59:59. Temps de repos : de 0 s à 10:00, par pas de 5 s. |
 | RG-07 | **Durée de séance** = heure de fin − heure de début. |
 | RG-08 | Une séance terminée contient au moins une série validée. |
 | RG-09 | **Temps de repos effectif d'une série** = sa valeur propre si elle est définie, sinon le temps par défaut de l'exercice en bibliothèque, sinon le réglage global. |
 | RG-10 | Les suppressions sont « douces » en base (marquées, pas effacées) pour préparer la sync. L'utilisateur ne voit pas la différence. Exception : une séance abandonnée est effacée pour de bon. |
-| RG-11 | **Placeholder d'un champ** = valeur prévue dans le modèle si elle existe, sinon valeur « Précédent », sinon rien. |
+| RG-11 | **Placeholder d'un champ**, champ par champ = valeur prévue dans le modèle si elle existe, sinon valeur « Précédent », sinon rien. |
 | RG-12 | Une série ajoutée reprend le temps de repos propre de la série au-dessus. S'il n'y en a pas, elle n'a pas de valeur propre et RG-09 s'applique. |
 | RG-13 | **Meilleure série** d'une séance (en cas d'égalité, la première) : poids + reps → le 1RM estimé le plus élevé (formule d'Epley : kg × (1 + reps / 30), ce qui permet de comparer 100 kg × 5 et 90 kg × 10) ; reps seules → le plus de reps ; durée → la plus longue. |
 | RG-14 | **Unités** : les poids sont toujours enregistrés en kg. Ils sont saisis et affichés dans l'unité de l'exercice (1 lb = 0,45359237 kg), avec la virgule française et au plus 2 décimales. |
+| RG-15 | Dans l'éditeur de modèle, une série ajoutée est la copie de celle du dessus (valeurs prévues et temps de repos). |
 
 ## 7. Exigences non fonctionnelles (NF)
 
@@ -292,3 +330,5 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | D10 | Unités | Choix kg / lb **par exercice** (kg par défaut), pas de réglage global. Les lb entrent donc dans le MVP |
 | D11 | Idées retenues | Ouvrir la fiche pendant une séance (WO-22), meilleure série ★ (RG-13), onglets Records et Graphique en v2 |
 | D12 | Types de série | **Retirés** (échauffement, drop set, échec : WO-12 supprimée). Toutes les séries sont « normales ». La colonne `set_type` reste en base avec la valeur `normal`, ce qui évite une migration et permet de les réintroduire un jour |
+| D13 | Modèles | Séries avec kg/reps prévus (comme Strong), copiés dans la séance au démarrage. Toucher une carte ouvre un aperçu avec « Démarrer » (pas de démarrage en 1 tap). La mise à jour du modèle se propose dans le résumé, sans fenêtre supplémentaire |
+| D14 | Après les premiers essais du M5 | **Plus de séance vide** : toute séance démarre d'un modèle (WO-01), d'où la suppression de TP-06 et du nom selon l'heure (RG-05). Le **sélecteur d'exercices est l'onglet Exercices** en mode sélection, pour que les deux évoluent ensemble (WO-04). Réordonner les exercices par **glisser-déposer après réduction**, comme Strong (WO-15, TP-01). Carte de modèle : un exercice par ligne (TP-02) |

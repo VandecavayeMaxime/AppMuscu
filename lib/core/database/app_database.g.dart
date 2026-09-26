@@ -3202,6 +3202,38 @@ class $WorkoutSetsTable extends WorkoutSets
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _plannedWeightKgMeta = const VerificationMeta(
+    'plannedWeightKg',
+  );
+  @override
+  late final GeneratedColumn<double> plannedWeightKg = GeneratedColumn<double>(
+    'planned_weight_kg',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _plannedRepsMeta = const VerificationMeta(
+    'plannedReps',
+  );
+  @override
+  late final GeneratedColumn<int> plannedReps = GeneratedColumn<int>(
+    'planned_reps',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _plannedDurationSecondsMeta =
+      const VerificationMeta('plannedDurationSeconds');
+  @override
+  late final GeneratedColumn<int> plannedDurationSeconds = GeneratedColumn<int>(
+    'planned_duration_seconds',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3213,6 +3245,9 @@ class $WorkoutSetsTable extends WorkoutSets
     durationSeconds,
     restSeconds,
     completedAt,
+    plannedWeightKg,
+    plannedReps,
+    plannedDurationSeconds,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3287,6 +3322,33 @@ class $WorkoutSetsTable extends WorkoutSets
         ),
       );
     }
+    if (data.containsKey('planned_weight_kg')) {
+      context.handle(
+        _plannedWeightKgMeta,
+        plannedWeightKg.isAcceptableOrUnknown(
+          data['planned_weight_kg']!,
+          _plannedWeightKgMeta,
+        ),
+      );
+    }
+    if (data.containsKey('planned_reps')) {
+      context.handle(
+        _plannedRepsMeta,
+        plannedReps.isAcceptableOrUnknown(
+          data['planned_reps']!,
+          _plannedRepsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('planned_duration_seconds')) {
+      context.handle(
+        _plannedDurationSecondsMeta,
+        plannedDurationSeconds.isAcceptableOrUnknown(
+          data['planned_duration_seconds']!,
+          _plannedDurationSecondsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3334,6 +3396,18 @@ class $WorkoutSetsTable extends WorkoutSets
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
       ),
+      plannedWeightKg: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}planned_weight_kg'],
+      ),
+      plannedReps: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}planned_reps'],
+      ),
+      plannedDurationSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}planned_duration_seconds'],
+      ),
     );
   }
 
@@ -3360,6 +3434,9 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
 
   /// `null` = série pas encore validée.
   final DateTime? completedAt;
+  final double? plannedWeightKg;
+  final int? plannedReps;
+  final int? plannedDurationSeconds;
   const WorkoutSet({
     required this.id,
     required this.workoutExerciseId,
@@ -3370,6 +3447,9 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     this.durationSeconds,
     this.restSeconds,
     this.completedAt,
+    this.plannedWeightKg,
+    this.plannedReps,
+    this.plannedDurationSeconds,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3397,6 +3477,15 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
     }
+    if (!nullToAbsent || plannedWeightKg != null) {
+      map['planned_weight_kg'] = Variable<double>(plannedWeightKg);
+    }
+    if (!nullToAbsent || plannedReps != null) {
+      map['planned_reps'] = Variable<int>(plannedReps);
+    }
+    if (!nullToAbsent || plannedDurationSeconds != null) {
+      map['planned_duration_seconds'] = Variable<int>(plannedDurationSeconds);
+    }
     return map;
   }
 
@@ -3419,6 +3508,15 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
+      plannedWeightKg: plannedWeightKg == null && nullToAbsent
+          ? const Value.absent()
+          : Value(plannedWeightKg),
+      plannedReps: plannedReps == null && nullToAbsent
+          ? const Value.absent()
+          : Value(plannedReps),
+      plannedDurationSeconds: plannedDurationSeconds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(plannedDurationSeconds),
     );
   }
 
@@ -3439,6 +3537,11 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       durationSeconds: serializer.fromJson<int?>(json['durationSeconds']),
       restSeconds: serializer.fromJson<int?>(json['restSeconds']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
+      plannedWeightKg: serializer.fromJson<double?>(json['plannedWeightKg']),
+      plannedReps: serializer.fromJson<int?>(json['plannedReps']),
+      plannedDurationSeconds: serializer.fromJson<int?>(
+        json['plannedDurationSeconds'],
+      ),
     );
   }
   @override
@@ -3456,6 +3559,9 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       'durationSeconds': serializer.toJson<int?>(durationSeconds),
       'restSeconds': serializer.toJson<int?>(restSeconds),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
+      'plannedWeightKg': serializer.toJson<double?>(plannedWeightKg),
+      'plannedReps': serializer.toJson<int?>(plannedReps),
+      'plannedDurationSeconds': serializer.toJson<int?>(plannedDurationSeconds),
     };
   }
 
@@ -3469,6 +3575,9 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     Value<int?> durationSeconds = const Value.absent(),
     Value<int?> restSeconds = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
+    Value<double?> plannedWeightKg = const Value.absent(),
+    Value<int?> plannedReps = const Value.absent(),
+    Value<int?> plannedDurationSeconds = const Value.absent(),
   }) => WorkoutSet(
     id: id ?? this.id,
     workoutExerciseId: workoutExerciseId ?? this.workoutExerciseId,
@@ -3481,6 +3590,13 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
         : this.durationSeconds,
     restSeconds: restSeconds.present ? restSeconds.value : this.restSeconds,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    plannedWeightKg: plannedWeightKg.present
+        ? plannedWeightKg.value
+        : this.plannedWeightKg,
+    plannedReps: plannedReps.present ? plannedReps.value : this.plannedReps,
+    plannedDurationSeconds: plannedDurationSeconds.present
+        ? plannedDurationSeconds.value
+        : this.plannedDurationSeconds,
   );
   WorkoutSet copyWithCompanion(WorkoutSetsCompanion data) {
     return WorkoutSet(
@@ -3501,6 +3617,15 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
+      plannedWeightKg: data.plannedWeightKg.present
+          ? data.plannedWeightKg.value
+          : this.plannedWeightKg,
+      plannedReps: data.plannedReps.present
+          ? data.plannedReps.value
+          : this.plannedReps,
+      plannedDurationSeconds: data.plannedDurationSeconds.present
+          ? data.plannedDurationSeconds.value
+          : this.plannedDurationSeconds,
     );
   }
 
@@ -3515,7 +3640,10 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
           ..write('reps: $reps, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('restSeconds: $restSeconds, ')
-          ..write('completedAt: $completedAt')
+          ..write('completedAt: $completedAt, ')
+          ..write('plannedWeightKg: $plannedWeightKg, ')
+          ..write('plannedReps: $plannedReps, ')
+          ..write('plannedDurationSeconds: $plannedDurationSeconds')
           ..write(')'))
         .toString();
   }
@@ -3531,6 +3659,9 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     durationSeconds,
     restSeconds,
     completedAt,
+    plannedWeightKg,
+    plannedReps,
+    plannedDurationSeconds,
   );
   @override
   bool operator ==(Object other) =>
@@ -3544,7 +3675,10 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
           other.reps == this.reps &&
           other.durationSeconds == this.durationSeconds &&
           other.restSeconds == this.restSeconds &&
-          other.completedAt == this.completedAt);
+          other.completedAt == this.completedAt &&
+          other.plannedWeightKg == this.plannedWeightKg &&
+          other.plannedReps == this.plannedReps &&
+          other.plannedDurationSeconds == this.plannedDurationSeconds);
 }
 
 class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
@@ -3557,6 +3691,9 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
   final Value<int?> durationSeconds;
   final Value<int?> restSeconds;
   final Value<DateTime?> completedAt;
+  final Value<double?> plannedWeightKg;
+  final Value<int?> plannedReps;
+  final Value<int?> plannedDurationSeconds;
   final Value<int> rowid;
   const WorkoutSetsCompanion({
     this.id = const Value.absent(),
@@ -3568,6 +3705,9 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     this.durationSeconds = const Value.absent(),
     this.restSeconds = const Value.absent(),
     this.completedAt = const Value.absent(),
+    this.plannedWeightKg = const Value.absent(),
+    this.plannedReps = const Value.absent(),
+    this.plannedDurationSeconds = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   WorkoutSetsCompanion.insert({
@@ -3580,6 +3720,9 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     this.durationSeconds = const Value.absent(),
     this.restSeconds = const Value.absent(),
     this.completedAt = const Value.absent(),
+    this.plannedWeightKg = const Value.absent(),
+    this.plannedReps = const Value.absent(),
+    this.plannedDurationSeconds = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : workoutExerciseId = Value(workoutExerciseId),
        position = Value(position);
@@ -3593,6 +3736,9 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     Expression<int>? durationSeconds,
     Expression<int>? restSeconds,
     Expression<DateTime>? completedAt,
+    Expression<double>? plannedWeightKg,
+    Expression<int>? plannedReps,
+    Expression<int>? plannedDurationSeconds,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3605,6 +3751,10 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
       if (restSeconds != null) 'rest_seconds': restSeconds,
       if (completedAt != null) 'completed_at': completedAt,
+      if (plannedWeightKg != null) 'planned_weight_kg': plannedWeightKg,
+      if (plannedReps != null) 'planned_reps': plannedReps,
+      if (plannedDurationSeconds != null)
+        'planned_duration_seconds': plannedDurationSeconds,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3619,6 +3769,9 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     Value<int?>? durationSeconds,
     Value<int?>? restSeconds,
     Value<DateTime?>? completedAt,
+    Value<double?>? plannedWeightKg,
+    Value<int?>? plannedReps,
+    Value<int?>? plannedDurationSeconds,
     Value<int>? rowid,
   }) {
     return WorkoutSetsCompanion(
@@ -3631,6 +3784,10 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
       durationSeconds: durationSeconds ?? this.durationSeconds,
       restSeconds: restSeconds ?? this.restSeconds,
       completedAt: completedAt ?? this.completedAt,
+      plannedWeightKg: plannedWeightKg ?? this.plannedWeightKg,
+      plannedReps: plannedReps ?? this.plannedReps,
+      plannedDurationSeconds:
+          plannedDurationSeconds ?? this.plannedDurationSeconds,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3667,6 +3824,17 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
     }
+    if (plannedWeightKg.present) {
+      map['planned_weight_kg'] = Variable<double>(plannedWeightKg.value);
+    }
+    if (plannedReps.present) {
+      map['planned_reps'] = Variable<int>(plannedReps.value);
+    }
+    if (plannedDurationSeconds.present) {
+      map['planned_duration_seconds'] = Variable<int>(
+        plannedDurationSeconds.value,
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3685,6 +3853,9 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
           ..write('durationSeconds: $durationSeconds, ')
           ..write('restSeconds: $restSeconds, ')
           ..write('completedAt: $completedAt, ')
+          ..write('plannedWeightKg: $plannedWeightKg, ')
+          ..write('plannedReps: $plannedReps, ')
+          ..write('plannedDurationSeconds: $plannedDurationSeconds, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6912,6 +7083,9 @@ typedef $$WorkoutSetsTableCreateCompanionBuilder =
       Value<int?> durationSeconds,
       Value<int?> restSeconds,
       Value<DateTime?> completedAt,
+      Value<double?> plannedWeightKg,
+      Value<int?> plannedReps,
+      Value<int?> plannedDurationSeconds,
       Value<int> rowid,
     });
 typedef $$WorkoutSetsTableUpdateCompanionBuilder =
@@ -6925,6 +7099,9 @@ typedef $$WorkoutSetsTableUpdateCompanionBuilder =
       Value<int?> durationSeconds,
       Value<int?> restSeconds,
       Value<DateTime?> completedAt,
+      Value<double?> plannedWeightKg,
+      Value<int?> plannedReps,
+      Value<int?> plannedDurationSeconds,
       Value<int> rowid,
     });
 
@@ -7001,6 +7178,21 @@ class $$WorkoutSetsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get plannedWeightKg => $composableBuilder(
+    column: $table.plannedWeightKg,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get plannedReps => $composableBuilder(
+    column: $table.plannedReps,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get plannedDurationSeconds => $composableBuilder(
+    column: $table.plannedDurationSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$WorkoutExercisesTableFilterComposer get workoutExerciseId {
     final $$WorkoutExercisesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -7074,6 +7266,21 @@ class $$WorkoutSetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get plannedWeightKg => $composableBuilder(
+    column: $table.plannedWeightKg,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get plannedReps => $composableBuilder(
+    column: $table.plannedReps,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get plannedDurationSeconds => $composableBuilder(
+    column: $table.plannedDurationSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$WorkoutExercisesTableOrderingComposer get workoutExerciseId {
     final $$WorkoutExercisesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7134,6 +7341,21 @@ class $$WorkoutSetsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get plannedWeightKg => $composableBuilder(
+    column: $table.plannedWeightKg,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get plannedReps => $composableBuilder(
+    column: $table.plannedReps,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get plannedDurationSeconds => $composableBuilder(
+    column: $table.plannedDurationSeconds,
     builder: (column) => column,
   );
 
@@ -7198,6 +7420,9 @@ class $$WorkoutSetsTableTableManager
                 Value<int?> durationSeconds = const Value.absent(),
                 Value<int?> restSeconds = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
+                Value<double?> plannedWeightKg = const Value.absent(),
+                Value<int?> plannedReps = const Value.absent(),
+                Value<int?> plannedDurationSeconds = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WorkoutSetsCompanion(
                 id: id,
@@ -7209,6 +7434,9 @@ class $$WorkoutSetsTableTableManager
                 durationSeconds: durationSeconds,
                 restSeconds: restSeconds,
                 completedAt: completedAt,
+                plannedWeightKg: plannedWeightKg,
+                plannedReps: plannedReps,
+                plannedDurationSeconds: plannedDurationSeconds,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7222,6 +7450,9 @@ class $$WorkoutSetsTableTableManager
                 Value<int?> durationSeconds = const Value.absent(),
                 Value<int?> restSeconds = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
+                Value<double?> plannedWeightKg = const Value.absent(),
+                Value<int?> plannedReps = const Value.absent(),
+                Value<int?> plannedDurationSeconds = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WorkoutSetsCompanion.insert(
                 id: id,
@@ -7233,6 +7464,9 @@ class $$WorkoutSetsTableTableManager
                 durationSeconds: durationSeconds,
                 restSeconds: restSeconds,
                 completedAt: completedAt,
+                plannedWeightKg: plannedWeightKg,
+                plannedReps: plannedReps,
+                plannedDurationSeconds: plannedDurationSeconds,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

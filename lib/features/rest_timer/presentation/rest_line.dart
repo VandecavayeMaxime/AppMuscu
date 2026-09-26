@@ -54,7 +54,7 @@ class RestLine extends ConsumerWidget {
                 progress: timer.progress(now),
                 remainingSeconds: timer.remainingSeconds(now),
               )
-            : _PlainLine(
+            : PlainRestLine(
                 label: seconds == 0 ? 'Sans repos' : formatDuration(seconds),
                 done: done,
                 color: done
@@ -70,13 +70,10 @@ class RestLine extends ConsumerWidget {
     WidgetRef ref,
     int globalRest,
   ) async {
-    final choice = await showModalBottomSheet<_RestChoice>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => _RestPicker(
-        current: set.restSeconds,
-        defaultSeconds: exercise.defaultRestSeconds ?? globalRest,
-      ),
+    final choice = await showRestPicker(
+      context,
+      current: set.restSeconds,
+      defaultSeconds: exercise.defaultRestSeconds ?? globalRest,
     );
     if (choice == null) return;
     final repository = ref.read(workoutRepositoryProvider);
@@ -89,8 +86,9 @@ class RestLine extends ConsumerWidget {
 }
 
 /// « ─────── 2:00 ─────── » (prévu) ou « ─────── ✓ 2:00 ─────── » (terminé).
-class _PlainLine extends StatelessWidget {
-  const _PlainLine({
+class PlainRestLine extends StatelessWidget {
+  const PlainRestLine({
+    super.key,
     required this.label,
     required this.done,
     required this.color,
@@ -163,7 +161,24 @@ class _RunningBar extends StatelessWidget {
   }
 }
 
-typedef _RestChoice = ({int? seconds, bool allSets});
+/// Temps choisi (`null` = par défaut, 0 = sans repos), pour une série ou
+/// pour toutes celles de l'exercice.
+typedef RestChoice = ({int? seconds, bool allSets});
+
+/// Feuille de choix du temps de repos (RT-07), partagée par la séance et
+/// l'éditeur de modèle. Renvoie `null` si elle est fermée sans choix.
+Future<RestChoice?> showRestPicker(
+  BuildContext context, {
+  required int? current,
+  required int defaultSeconds,
+}) {
+  return showModalBottomSheet<RestChoice>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) =>
+        _RestPicker(current: current, defaultSeconds: defaultSeconds),
+  );
+}
 
 /// Choix du temps de repos d'une série, ou de toutes celles de l'exercice.
 class _RestPicker extends StatefulWidget {

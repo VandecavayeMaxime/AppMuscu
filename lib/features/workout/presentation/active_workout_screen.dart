@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/text_input_dialog.dart';
 import '../../rest_timer/presentation/rest_line.dart';
@@ -11,15 +12,27 @@ import '../data/workout_repository.dart';
 import '../domain/set_numbering.dart';
 import '../domain/set_rules.dart';
 import 'elapsed_time.dart';
+import 'exercise_reorder_list.dart';
 import 'set_row.dart';
 import 'workout_providers.dart';
 
 /// Écran « Séance en cours » (docs/SPEC.md §5.2), en plein écran.
-class ActiveWorkoutScreen extends ConsumerWidget {
+class ActiveWorkoutScreen extends ConsumerStatefulWidget {
   const ActiveWorkoutScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ActiveWorkoutScreen> createState() =>
+      _ActiveWorkoutScreenState();
+}
+
+class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
+  /// Mode « réorganiser » (WO-15) : ordre affiché pendant le glisser-déposer
+  /// (lignes de workout_exercises), sans attendre que la base confirme.
+  /// `null` = affichage normal.
+  List<String>? _order;
+
+  @override
+  Widget build(BuildContext context) {
     final workout = ref.watch(activeWorkoutProvider).value;
     if (workout == null) {
       return Scaffold(
@@ -71,11 +84,19 @@ class ActiveWorkoutScreen extends ConsumerWidget {
       ),
       body: details == null
           ? const Center(child: CircularProgressIndicator())
+          : _order != null
+          ? _reorderList(details)
           : ListView(
               padding: const EdgeInsets.only(bottom: 32),
               children: [
                 for (final item in details.exercises)
-                  _ExerciseSection(item, key: ValueKey(item.entry.id)),
+                  _ExerciseSection(
+                    item,
+                    key: ValueKey(item.entry.id),
+                    onReorder: details.exercises.length < 2
+                        ? null
+                        : () => _startReorder(details),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
                   child: FilledButton.tonalIcon(
@@ -95,6 +116,35 @@ class ActiveWorkoutScreen extends ConsumerWidget {
                 ),
               ],
             ),
+    );
+  }
+
+  void _startReorder(WorkoutDetails details) {
+    FocusScope.of(context).unfocus();
+    setState(
+      () => _order = [for (final item in details.exercises) item.entry.id],
+    );
+  }
+
+  Widget _reorderList(WorkoutDetails details) {
+    final byId = {for (final item in details.exercises) item.entry.id: item};
+    final order = [
+      for (final id in _order!)
+        if (byId.containsKey(id)) id,
+    ];
+    return ExerciseReorderList(
+      items: [
+        for (final id in order)
+          (key: ValueKey(id), name: byId[id]!.exercise.name),
+      ],
+      onMove: (from, to) {
+        order.insert(to, order.removeAt(from));
+        setState(() => _order = order);
+        ref
+            .read(workoutRepositoryProvider)
+            .reorderExercises(details.workout.id, order);
+      },
+      onDone: () => setState(() => _order = null),
     );
   }
 
@@ -149,7 +199,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
 
     // Rien à enregistrer : on propose d'abandonner la séance (RG-08).
     if (completed == 0 && ready == 0) {
-      final abandon = await _confirm(
+      final abandon = await showConfirmDialog(
         context,
         title: 'Aucune série validée',
         message:
@@ -197,7 +247,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
       if (choice == null) return;
       validateReadySets = choice;
     } else {
-      final confirmed = await _confirm(
+      final confirmed = await showConfirmDialog(
         context,
         title: 'Terminer la séance ?',
         cancel: 'Continuer',
@@ -221,7 +271,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
     WidgetRef ref,
     String workoutId,
   ) async {
-    final confirmed = await _confirm(
+    final confirmed = await showConfirmDialog(
       context,
       title: 'Annuler la séance ?',
       message: 'La séance et toutes ses séries seront supprimées.',
@@ -241,41 +291,17 @@ void _leave(BuildContext context) {
   context.canPop() ? context.pop() : context.go('/seance');
 }
 
-Future<bool> _confirm(
-  BuildContext context, {
-  required String title,
-  String? message,
-  required String cancel,
-  required String confirm,
-}) async {
-  final result = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
-      content: message == null ? null : Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(cancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(confirm),
-        ),
-      ],
-    ),
-  );
-  return result ?? false;
-}
-
-enum _ExerciseAction { note, remove }
+enum _ExerciseAction { note, reorder, remove }
 
 /// Un exercice de la séance : titre et menu, note, tableau des séries,
 /// « + Ajouter une série ».
 class _ExerciseSection extends ConsumerStatefulWidget {
-  const _ExerciseSection(this.item, {super.key});
+  const _ExerciseSection(this.item, {super.key, this.onReorder});
 
   final WorkoutExerciseDetails item;
+
+  /// Passe en mode « réorganiser » ; `null` s'il n'y a qu'un exercice.
+  final VoidCallback? onReorder;
 
   @override
   ConsumerState<_ExerciseSection> createState() => _ExerciseSectionState();
@@ -310,10 +336,12 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
         Row(
           children: [
             Expanded(
-              // Toucher le nom ouvre la fiche de l'exercice (WO-22).
+              // Toucher le nom ouvre la fiche de l'exercice (WO-22) ; un
+              // appui long réduit les exercices pour les réordonner (WO-15).
               child: InkWell(
                 onTap: () =>
                     context.push('/seance-en-cours/exercice/${exercise.id}'),
+                onLongPress: widget.onReorder,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 8, 8),
                   child: Text(
@@ -336,6 +364,11 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
                     note == null ? 'Ajouter une note' : 'Modifier la note',
                   ),
                 ),
+                if (widget.onReorder != null)
+                  const PopupMenuItem(
+                    value: _ExerciseAction.reorder,
+                    child: Text('Réorganiser'),
+                  ),
                 const PopupMenuItem(
                   value: _ExerciseAction.remove,
                   child: Text('Retirer de la séance'),
@@ -373,15 +406,7 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
           Dismissible(
             key: ValueKey('dismiss-${set.id}'),
             direction: DismissDirection.endToStart,
-            background: Container(
-              color: theme.colorScheme.errorContainer,
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 24),
-              child: Icon(
-                Icons.delete_outline,
-                color: theme.colorScheme.onErrorContainer,
-              ),
-            ),
+            background: const SwipeDeleteBackground(),
             onDismissed: (_) {
               setState(() => _dismissed.add(set.id));
               ref.read(restTimerControllerProvider).stopIfFor([set.id]);
@@ -427,8 +452,10 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
         if (note != null) {
           await repository.updateExerciseNote(item.entry.id, note);
         }
+      case _ExerciseAction.reorder:
+        widget.onReorder?.call();
       case _ExerciseAction.remove:
-        final confirmed = await _confirm(
+        final confirmed = await showConfirmDialog(
           context,
           title: 'Retirer « ${item.exercise.name} » ?',
           message: 'Ses séries seront supprimées de la séance.',

@@ -189,16 +189,19 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
           trackingType: _trackingType,
           instructions: instructions,
         );
+        if (mounted) context.pop();
       } else {
-        await repository.createCustom(
+        // Le nouvel identifiant est renvoyé à l'écran précédent : le
+        // sélecteur d'exercices s'en sert pour le cocher.
+        final created = await repository.createCustom(
           name: _nameController.text,
           equipment: _equipment!,
           bodyPart: _bodyPart!,
           trackingType: _trackingType,
           instructions: instructions,
         );
+        if (mounted) context.pop(created.id);
       }
-      if (mounted) context.pop();
     } on DuplicateExerciseNameException {
       setState(() {
         _nameError = 'Un exercice porte déjà ce nom';

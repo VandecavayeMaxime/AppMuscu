@@ -1,3 +1,4 @@
+import 'package:app_muscu/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -5,23 +6,34 @@ import '../../../helpers/pump_app.dart';
 import '../../../helpers/test_database.dart';
 
 void main() {
+  /// Toute séance part d'un modèle (WO-01) : chaque test dispose d'un modèle
+  /// vide, « Séance libre », en plus de ce que prépare [setUp].
+  void testWorkout(
+    String description,
+    Future<void> Function(WidgetTester tester) body, {
+    Future<void> Function(AppDatabase db)? setUp,
+  }) => testApp(
+    description,
+    body,
+    setUp: (db) async {
+      await addEmptyTemplate(db);
+      await setUp?.call(db);
+    },
+  );
+
+  /// Démarre une séance vide depuis le modèle « Séance libre ».
   Future<void> startWorkout(WidgetTester tester) async {
-    await tester.tap(find.text('Démarrer une séance vide'));
+    await tester.tap(find.text('Séance libre'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Démarrer la séance'));
     await tester.pumpAndSettle();
   }
-
-  /// Case à cocher d'un exercice dans le sélecteur.
-  Finder checkboxOf(String name) => find.descendant(
-    of: find.widgetWithText(ListTile, name),
-    matching: find.byType(Checkbox),
-  );
 
   Future<void> addExercises(WidgetTester tester, List<String> names) async {
     await tester.tap(find.text('Ajouter des exercices'));
     await tester.pumpAndSettle();
     for (final name in names) {
-      await tester.tap(checkboxOf(name));
-      await tester.pump();
+      await checkExercise(tester, name);
     }
     await tester.tap(find.textContaining('Ajouter ('));
     await tester.pumpAndSettle();
@@ -37,11 +49,13 @@ void main() {
   Finder inDialog(String text) =>
       find.descendant(of: find.byType(AlertDialog), matching: find.text(text));
 
-  testApp('démarre une séance vide et y ajoute des exercices', (tester) async {
+  testWorkout('démarre une séance vide et y ajoute des exercices', (
+    tester,
+  ) async {
     await startWorkout(tester);
 
     expect(find.text('Terminer'), findsOneWidget);
-    expect(find.textContaining('Séance d'), findsOneWidget);
+    expect(find.text('Séance libre'), findsOneWidget); // nom du modèle
 
     await addExercises(tester, ['Squat (barre)', 'Tractions']);
 
@@ -52,7 +66,9 @@ void main() {
     expect(find.byTooltip('Valider la série'), findsNWidgets(2));
   });
 
-  testApp('saisit et valide une série, puis ajoute une série', (tester) async {
+  testWorkout('saisit et valide une série, puis ajoute une série', (
+    tester,
+  ) async {
     await startWorkout(tester);
     await addExercises(tester, ['Squat (barre)']);
 
@@ -69,7 +85,7 @@ void main() {
     expect(find.byTooltip('Valider la série'), findsOneWidget);
   });
 
-  testApp('refuse de valider une série vide sans valeur précédente', (
+  testWorkout('refuse de valider une série vide sans valeur précédente', (
     tester,
   ) async {
     await startWorkout(tester);
@@ -81,7 +97,7 @@ void main() {
     expect(find.byTooltip('Valider la série'), findsOneWidget);
   });
 
-  testApp(
+  testWorkout(
     'affiche « Précédent » et valide une série vide avec ces valeurs',
     setUp: (db) => addWorkout(
       db,
@@ -107,7 +123,7 @@ void main() {
     },
   );
 
-  testApp(
+  testWorkout(
     'taper sur « Précédent » recopie les valeurs',
     setUp: (db) => addWorkout(
       db,
@@ -126,7 +142,7 @@ void main() {
     },
   );
 
-  testApp('terminer : la séance apparaît dans l’historique de l’exercice', (
+  testWorkout('terminer : la séance apparaît dans l’historique de l’exercice', (
     tester,
   ) async {
     await startWorkout(tester);
@@ -145,7 +161,7 @@ void main() {
     expect(find.text('Séance terminée'), findsOneWidget); // résumé
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
-    expect(find.text('Démarrer une séance vide'), findsOneWidget);
+    expect(find.text('Modèles'), findsOneWidget);
 
     await tester.tap(tab('Exercices'));
     await tester.pumpAndSettle();
@@ -188,7 +204,7 @@ void main() {
       matching: find.text(value),
     );
 
-    testApp('sans série validée : propose d’abandonner la séance', (
+    testWorkout('sans série validée : propose d’abandonner la séance', (
       tester,
     ) async {
       await startWorkout(tester);
@@ -204,10 +220,10 @@ void main() {
       await tapFinish(tester);
       await tester.tap(inDialog('Abandonner'));
       await tester.pumpAndSettle();
-      expect(find.text('Démarrer une séance vide'), findsOneWidget);
+      expect(find.text('Modèles'), findsOneWidget);
     });
 
-    testApp('séries inachevées : « Compléter »', (tester) async {
+    testWorkout('séries inachevées : « Compléter »', (tester) async {
       await oneValidatedOneReady(tester);
 
       await tapFinish(tester);
@@ -222,7 +238,7 @@ void main() {
       expect(stat('Séries', '2'), findsOneWidget);
     });
 
-    testApp('séries inachevées : « Jeter »', (tester) async {
+    testWorkout('séries inachevées : « Jeter »', (tester) async {
       await oneValidatedOneReady(tester);
 
       await tapFinish(tester);
@@ -233,7 +249,7 @@ void main() {
       expect(stat('Séries', '1'), findsOneWidget);
     });
 
-    testApp('sans série validée mais avec des séries remplies : pas de '
+    testWorkout('sans série validée mais avec des séries remplies : pas de '
         '« Jeter »', (tester) async {
       await startWorkout(tester);
       await addExercises(tester, ['Squat (barre)']);
@@ -247,7 +263,7 @@ void main() {
       expect(inDialog('Compléter'), findsOneWidget);
     });
 
-    testApp('le résumé affiche les chiffres de la séance', (tester) async {
+    testWorkout('le résumé affiche les chiffres de la séance', (tester) async {
       await oneValidatedOneReady(tester);
       await tapFinish(tester);
       await tester.tap(inDialog('Compléter'));
@@ -265,10 +281,10 @@ void main() {
 
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
-      expect(find.text('Démarrer une séance vide'), findsOneWidget);
+      expect(find.text('Modèles'), findsOneWidget);
     });
 
-    testApp(
+    testWorkout(
       'le résumé compare chaque exercice à la dernière fois',
       setUp: (db) => addWorkout(
         db,
@@ -300,7 +316,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testApp('balayer une série vers la gauche la supprime', (tester) async {
+    testWorkout('balayer une série vers la gauche la supprime', (tester) async {
       await squatWithTwoSets(tester);
 
       // Geste parti de la colonne « Précédent » (« — ») : sur un champ de
@@ -313,7 +329,9 @@ void main() {
       expect(find.text('2'), findsNothing);
     });
 
-    testApp('ajoute une note à un exercice, puis le retire', (tester) async {
+    testWorkout('ajoute une note à un exercice, puis le retire', (
+      tester,
+    ) async {
       await startWorkout(tester);
       await addExercises(tester, ['Squat (barre)', 'Tractions']);
 
@@ -343,12 +361,12 @@ void main() {
       expect(find.text('Tractions'), findsOneWidget);
     });
 
-    testApp('toucher le nom de la séance permet de la renommer', (
+    testWorkout('toucher le nom de la séance permet de la renommer', (
       tester,
     ) async {
       await startWorkout(tester);
 
-      await tester.tap(find.textContaining('Séance d'));
+      await tester.tap(find.text('Séance libre'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.descendant(
@@ -364,7 +382,7 @@ void main() {
     });
   });
 
-  testApp('annuler la séance la supprime', (tester) async {
+  testWorkout('annuler la séance la supprime', (tester) async {
     await startWorkout(tester);
     await addExercises(tester, ['Squat (barre)']);
 
@@ -373,11 +391,11 @@ void main() {
     await tester.tap(inDialog('Supprimer'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Démarrer une séance vide'), findsOneWidget);
+    expect(find.text('Modèles'), findsOneWidget);
     expect(find.text('Reprendre'), findsNothing);
   });
 
-  testApp('réduire la séance puis la reprendre depuis l’onglet Séance', (
+  testWorkout('réduire la séance puis la reprendre depuis l’onglet Séance', (
     tester,
   ) async {
     await startWorkout(tester);
@@ -387,7 +405,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Séance en cours'), findsOneWidget);
-    expect(find.text('Démarrer une séance vide'), findsNothing);
 
     await tester.tap(find.text('Reprendre'));
     await tester.pumpAndSettle();
@@ -395,7 +412,7 @@ void main() {
     expect(find.text('Squat (barre)'), findsOneWidget);
   });
 
-  testApp(
+  testWorkout(
     'toucher le nom d’un exercice ouvre sa fiche, puis revient à la séance',
     setUp: (db) => addWorkout(
       db,
@@ -427,13 +444,12 @@ void main() {
     },
   );
 
-  testApp('dans le sélecteur, le nom ouvre la fiche et la sélection est '
+  testWorkout('dans le sélecteur, le nom ouvre la fiche et la sélection est '
       'conservée au retour', (tester) async {
     await startWorkout(tester);
     await tester.tap(find.text('Ajouter des exercices'));
     await tester.pumpAndSettle();
-    await tester.tap(checkboxOf('Tractions'));
-    await tester.pump();
+    await checkExercise(tester, 'Tractions');
 
     await tester.tap(find.text('Squat (barre)'));
     await tester.pumpAndSettle();
@@ -450,7 +466,41 @@ void main() {
     expect(find.text('Squat (barre)'), findsNothing);
   });
 
-  testApp('exercice « reps seules » : une seule colonne de saisie', (
+  testWorkout('le sélecteur est l’onglet Exercices : mêmes filtres, et un '
+      'exercice créé est coché d’office', (tester) async {
+    Future<void> choose(String label, String choice) async {
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(choice).last);
+      await tester.pumpAndSettle();
+    }
+
+    await startWorkout(tester);
+    await tester.tap(find.text('Ajouter des exercices'));
+    await tester.pumpAndSettle();
+
+    await choose('Groupe musculaire', 'Dos');
+    expect(find.text('Squat (barre)'), findsNothing);
+    expect(find.text('Tractions'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Nouvel exercice'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nom'),
+      'Hip thrust',
+    );
+    await choose('Groupe musculaire', 'Fessiers');
+    await choose('Catégorie', 'Barre');
+    await tester.tap(find.text('Enregistrer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ajouter (1)'), findsOneWidget);
+    await tester.tap(find.text('Ajouter (1)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hip thrust'), findsOneWidget);
+  });
+
+  testWorkout('exercice « reps seules » : une seule colonne de saisie', (
     tester,
   ) async {
     await startWorkout(tester);
@@ -462,5 +512,29 @@ void main() {
     await validateSet(tester);
 
     expect(find.byTooltip('Annuler la validation'), findsOneWidget);
+  });
+
+  testWorkout('appui long sur un exercice : le faire glisser pour changer '
+      'l’ordre (WO-15)', (tester) async {
+    await startWorkout(tester);
+    await addExercises(tester, ['Squat (barre)', 'Tractions']);
+
+    await tester.longPress(find.text('Tractions'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Glisse les exercices pour changer leur ordre'),
+      findsOneWidget,
+    );
+    expect(find.byType(TextField), findsNothing); // séries masquées
+
+    await dragUp(tester, 'Tractions');
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.text('Tractions')).dy,
+      lessThan(tester.getTopLeft(find.text('Squat (barre)')).dy),
+    );
+    expect(find.byType(TextField), findsNWidgets(3)); // séries revenues
   });
 }

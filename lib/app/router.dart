@@ -5,8 +5,8 @@ import '../features/exercises/presentation/exercise_detail_screen.dart';
 import '../features/exercises/presentation/exercise_form_screen.dart';
 import '../features/exercises/presentation/exercises_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/templates/presentation/template_editor_screen.dart';
 import '../features/workout/presentation/active_workout_screen.dart';
-import '../features/workout/presentation/exercise_picker_screen.dart';
 import '../features/workout/presentation/workout_home_screen.dart';
 import '../features/workout/presentation/workout_summary_screen.dart';
 import 'home_shell.dart';
@@ -28,20 +28,7 @@ GoRouter _createRouter() => GoRouter(
     GoRoute(
       path: '/seance-en-cours',
       builder: (context, state) => const ActiveWorkoutScreen(),
-      routes: [
-        GoRoute(
-          path: 'ajouter',
-          builder: (context, state) => const ExercisePickerScreen(),
-        ),
-        // Fiche d'un exercice ouverte pendant la séance (WO-22).
-        GoRoute(
-          path: 'exercice/:id',
-          builder: (context, state) => ExerciseDetailScreen(
-            exerciseId: state.pathParameters['id']!,
-            allowEditing: false,
-          ),
-        ),
-      ],
+      routes: _exerciseRoutes((state) => '/seance-en-cours'),
     ),
     // Résumé de fin de séance (WO-18), en plein écran lui aussi.
     GoRoute(
@@ -60,6 +47,23 @@ GoRouter _createRouter() => GoRouter(
             GoRoute(
               path: '/seance',
               builder: (context, state) => const WorkoutHomeScreen(),
+              routes: [
+                // Éditeur de modèle (TP-01, TP-03), dans l'onglet Séance.
+                GoRoute(
+                  path: 'modeles/nouveau',
+                  builder: (context, state) => const TemplateEditorScreen(),
+                  routes: _exerciseRoutes((state) => '/seance/modeles/nouveau'),
+                ),
+                GoRoute(
+                  path: 'modeles/:id',
+                  builder: (context, state) => TemplateEditorScreen(
+                    templateId: state.pathParameters['id'],
+                  ),
+                  routes: _exerciseRoutes(
+                    (state) => '/seance/modeles/${state.pathParameters['id']}',
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -104,3 +108,29 @@ GoRouter _createRouter() => GoRouter(
     ),
   ],
 );
+
+/// Sous-routes d'un écran qui compose une liste d'exercices (séance en cours
+/// ou modèle), situé au chemin renvoyé par [basePath] : le sélecteur
+/// d'exercices (WO-04, l'onglet Exercices en mode sélection), la fiche d'un
+/// exercice, sans modification possible (WO-22), et la création d'un
+/// exercice depuis le sélecteur.
+List<RouteBase> _exerciseRoutes(
+  String Function(GoRouterState state) basePath,
+) => [
+  GoRoute(
+    path: 'ajouter',
+    builder: (context, state) =>
+        ExercisesScreen.picker(ownerPath: basePath(state)),
+  ),
+  GoRoute(
+    path: 'exercice/:exerciseId',
+    builder: (context, state) => ExerciseDetailScreen(
+      exerciseId: state.pathParameters['exerciseId']!,
+      allowEditing: false,
+    ),
+  ),
+  GoRoute(
+    path: 'nouvel-exercice',
+    builder: (context, state) => const ExerciseFormScreen(),
+  ),
+];

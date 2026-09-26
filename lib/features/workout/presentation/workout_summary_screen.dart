@@ -5,6 +5,9 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/utils/duration_format.dart';
 import '../../../core/utils/weight_format.dart';
 import '../../exercises/domain/exercise_enums.dart';
+import '../../templates/data/template_repository.dart';
+import '../../templates/domain/template_changes.dart';
+import '../../templates/presentation/template_providers.dart';
 import '../domain/best_set.dart';
 import '../domain/exercise_comparison.dart';
 import '../domain/set_numbering.dart';
@@ -14,7 +17,8 @@ import 'set_format.dart';
 import 'workout_providers.dart';
 
 /// Résumé affiché à la fin d'une séance (WO-18) : chiffres clés, puis chaque
-/// exercice avec ses séries et sa comparaison avec la dernière fois.
+/// exercice avec ses séries et sa comparaison avec la dernière fois. Il
+/// propose aussi de mettre à jour le modèle d'origine (TP-07).
 class WorkoutSummaryScreen extends ConsumerWidget {
   const WorkoutSummaryScreen({super.key, required this.workoutId});
 
@@ -64,7 +68,9 @@ class WorkoutSummaryScreen extends ConsumerWidget {
             style: secondaryStyle,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          _UpdateTemplateCard(details),
+          const SizedBox(height: 8),
           Row(
             children: [
               _Stat('Durée', formatDuration(summary.duration.inSeconds)),
@@ -89,6 +95,54 @@ class WorkoutSummaryScreen extends ConsumerWidget {
             onPressed: () => context.go('/seance'),
             child: const Text('OK'),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// « La séance diffère du modèle » + bouton de mise à jour (TP-07). Rien si
+/// la séance ne vient pas d'un modèle ou s'y conforme.
+class _UpdateTemplateCard extends ConsumerWidget {
+  const _UpdateTemplateCard(this.details);
+
+  final WorkoutDetails details;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final templateId = details.workout.templateId;
+    // Le modèle d'origine ; `null` s'il a été supprimé entre-temps.
+    final template = templateId == null
+        ? null
+        : ref.watch(templateProvider(templateId)).value;
+    if (template == null || !workoutDiffersFromTemplate(details, template)) {
+      return const SizedBox.shrink();
+    }
+    final name = template.template.name;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('La séance diffère du modèle « $name ».'),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () async {
+                  await ref
+                      .read(templateRepositoryProvider)
+                      .updateFromWorkout(template.template.id, details);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Modèle « $name » mis à jour')),
+                  );
+                },
+                child: const Text('Mettre à jour le modèle'),
+              ),
+            ),
+          ],
         ),
       ),
     );

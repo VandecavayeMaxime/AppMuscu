@@ -12,7 +12,11 @@ typedef ExerciseFilter = ({
   Equipment? equipment,
 });
 
-/// Critères choisis dans l'onglet Exercices. Un `Notifier` garde un état et
+/// Les deux usages de la liste d'exercices : l'onglet Exercices et le
+/// sélecteur (séance, modèle). Chacun garde ses propres critères.
+enum ExerciseListMode { library, picker }
+
+/// Critères choisis dans la liste d'exercices. Un `Notifier` garde un état et
 /// expose les méthodes pour le modifier ; les écrans qui le regardent sont
 /// reconstruits à chaque changement.
 class ExerciseFilterNotifier extends Notifier<ExerciseFilter> {
@@ -38,22 +42,25 @@ class ExerciseFilterNotifier extends Notifier<ExerciseFilter> {
   );
 }
 
-final exerciseFilterProvider =
-    NotifierProvider<ExerciseFilterNotifier, ExerciseFilter>(
-      ExerciseFilterNotifier.new,
+/// Un jeu de critères par usage (`.family`). `.autoDispose` : ceux du
+/// sélecteur repartent de zéro à chaque ouverture.
+final exerciseFilterProvider = NotifierProvider.autoDispose
+    .family<ExerciseFilterNotifier, ExerciseFilter, ExerciseListMode>(
+      (mode) => ExerciseFilterNotifier(),
     );
 
 /// Exercices correspondant aux critères, mis à jour en direct.
-final exerciseListProvider = StreamProvider<List<Exercise>>((ref) {
-  final filter = ref.watch(exerciseFilterProvider);
-  return ref
-      .watch(exerciseRepositoryProvider)
-      .watchExercises(
-        search: filter.search,
-        bodyPart: filter.bodyPart,
-        equipment: filter.equipment,
-      );
-});
+final exerciseListProvider = StreamProvider.autoDispose
+    .family<List<Exercise>, ExerciseListMode>((ref, mode) {
+      final filter = ref.watch(exerciseFilterProvider(mode));
+      return ref
+          .watch(exerciseRepositoryProvider)
+          .watchExercises(
+            search: filter.search,
+            bodyPart: filter.bodyPart,
+            equipment: filter.equipment,
+          );
+    });
 
 /// Un exercice précis, mis à jour en direct (fiche, formulaire).
 ///

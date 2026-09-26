@@ -1,7 +1,6 @@
 import 'package:app_muscu/core/database/app_database.dart';
 import 'package:app_muscu/features/workout/data/workout_repository.dart';
 import 'package:app_muscu/features/workout/domain/set_type.dart';
-import 'package:clock/clock.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,9 +10,13 @@ void main() {
   late AppDatabase db;
   late WorkoutRepository repository;
 
-  setUp(() {
+  /// Modèle vide, « Séance libre » : toute séance part d'un modèle (WO-01).
+  late String templateId;
+
+  setUp(() async {
     db = createTestDatabase();
     repository = WorkoutRepository(db);
+    templateId = await addEmptyTemplate(db);
   });
   tearDown(() => db.close());
 
@@ -185,26 +188,28 @@ void main() {
     Future<WorkoutDetails> details(String workoutId) async =>
         (await repository.watchWorkoutDetails(workoutId).first)!;
 
-    test('démarre une séance nommée selon l’heure (WO-01, RG-05)', () async {
-      final workout = await withClock(
-        Clock.fixed(DateTime(2026, 9, 26, 18, 30)),
-        repository.startWorkout,
-      );
+    test('démarre une séance depuis un modèle, qui lui donne son nom '
+        '(WO-01)', () async {
+      final workout = await repository.startWorkout(templateId);
 
-      expect(workout.name, 'Séance du soir');
+      expect(workout.name, 'Séance libre');
+      expect(workout.templateId, templateId);
       expect(workout.endedAt, isNull);
       expect((await repository.watchActiveWorkout().first)?.id, workout.id);
     });
 
     test('refuse une deuxième séance en cours (WO-02)', () async {
-      await repository.startWorkout();
+      await repository.startWorkout(templateId);
 
-      await expectLater(repository.startWorkout(), throwsA(isA<Exception>()));
+      await expectLater(
+        repository.startWorkout(templateId),
+        throwsA(isA<Exception>()),
+      );
     });
 
     test('ajoute des exercices à la suite, chacun avec une série vide '
         '(WO-04)', () async {
-      final workout = await repository.startWorkout();
+      final workout = await repository.startWorkout(templateId);
 
       await repository.addExercises(workout.id, [benchPressId]);
       await repository.addExercises(workout.id, [squatId, pullUpId]);
@@ -222,9 +227,30 @@ void main() {
       }
     });
 
+    test('réordonne les exercices (WO-15)', () async {
+      final workout = await repository.startWorkout(templateId);
+      await repository.addExercises(workout.id, [
+        benchPressId,
+        squatId,
+        pullUpId,
+      ]);
+      final ids = [
+        for (final item in (await details(workout.id)).exercises) item.entry.id,
+      ];
+
+      await repository.reorderExercises(workout.id, [ids[2], ids[0], ids[1]]);
+
+      final exercises = (await details(workout.id)).exercises;
+      expect(exercises.map((e) => e.exercise.id), [
+        pullUpId,
+        benchPressId,
+        squatId,
+      ]);
+    });
+
     test('une nouvelle série reprend le repos de la précédente (WO-10, '
         'RG-12)', () async {
-      final workout = await repository.startWorkout();
+      final workout = await repository.startWorkout(templateId);
       await repository.addExercises(workout.id, [benchPressId]);
       final entry = (await details(workout.id)).exercises.single;
       await (db.update(db.workoutSets)
@@ -239,7 +265,7 @@ void main() {
     });
 
     test('saisit, valide puis dévalide une série (WO-07 à WO-09)', () async {
-      final workout = await repository.startWorkout();
+      final workout = await repository.startWorkout(templateId);
       await repository.addExercises(workout.id, [benchPressId]);
       Future<WorkoutSet> theSet() async =>
           (await details(workout.id)).exercises.single.sets.single;
@@ -264,7 +290,7 @@ void main() {
 
     test('terminer supprime les séries non validées et les exercices vides, '
         'puis alimente « Précédent »', () async {
-      final workout = await repository.startWorkout();
+      final workout = await repository.startWorkout(templateId);
       await repository.addExercises(workout.id, [benchPressId, squatId]);
       final bench = (await details(workout.id)).exercises.first;
       await repository.completeSet(bench.sets.single.id, weightKg: 80, reps: 8);
@@ -285,7 +311,7 @@ void main() {
     });
 
     test('refuse de terminer sans série validée (RG-08)', () async {
-      final workout = await repository.startWorkout();
+      final workout = await repository.startWorkout(templateId);
       await repository.addExercises(workout.id, [benchPressId]);
 
       await expectLater(
@@ -297,7 +323,7 @@ void main() {
 
     test('« Tout valider » valide les séries complètes et supprime les '
         'séries partielles ou vides (WO-17)', () async {
-      final workout = await repository.startWorkout();
+      final workout = await repository.startWorkout(templateId);
       await repository.addExercises(workout.id, [benchPressId]);
       final entry = (await details(workout.id)).exercises.single;
       final first = entry.sets.single.id;
@@ -319,7 +345,7 @@ void main() {
     });
 
     test('renomme la séance (WO-01)', () async {
-      final workout = await repository.startWorkout();
+      final workout = await repository.startWorkout(templateId);
 
       await repository.renameWorkout(workout.id, '  Push  ');
 
@@ -329,7 +355,7 @@ void main() {
     test(
       'suppression de série, note et retrait d’exercice (WO-11, WO-13)',
       () async {
-        final workout = await repository.startWorkout();
+        final workout = await repository.startWorkout(templateId);
         await repository.addExercises(workout.id, [benchPressId, squatId]);
         final bench = (await details(workout.id)).exercises.first;
         await repository.addSet(bench.entry.id);
@@ -358,7 +384,7 @@ void main() {
 
     test('temps de repos d’une série, ou de toutes celles d’un exercice '
         '(RT-07)', () async {
-      final workout = await repository.startWorkout();
+      final workout = await repository.startWorkout(templateId);
       await repository.addExercises(workout.id, [benchPressId]);
       final entry = (await details(workout.id)).exercises.single;
       await repository.addSet(entry.entry.id);
@@ -379,7 +405,7 @@ void main() {
     });
 
     test('abandonner efface la séance et tout son contenu (WO-19)', () async {
-      final workout = await repository.startWorkout();
+      final workout = await repository.startWorkout(templateId);
       await repository.addExercises(workout.id, [benchPressId]);
 
       await repository.discardWorkout(workout.id);

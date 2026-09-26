@@ -1,3 +1,4 @@
+import 'package:app_muscu/core/database/app_database.dart';
 import 'package:app_muscu/features/exercises/data/exercise_repository.dart';
 import 'package:app_muscu/features/exercises/domain/exercise_enums.dart';
 import 'package:app_muscu/features/rest_timer/presentation/rest_line.dart';
@@ -9,18 +10,28 @@ import '../../../helpers/pump_app.dart';
 import '../../../helpers/test_database.dart';
 
 void main() {
+  /// Chaque test dispose d'un modèle vide, « Séance libre » (WO-01).
+  void testWorkout(
+    String description,
+    Future<void> Function(WidgetTester tester) body, {
+    Future<void> Function(AppDatabase db)? setUp,
+  }) => testApp(
+    description,
+    body,
+    setUp: (db) async {
+      await addEmptyTemplate(db);
+      await setUp?.call(db);
+    },
+  );
+
   Future<void> startWorkoutWith(WidgetTester tester, String exercise) async {
-    await tester.tap(find.text('Démarrer une séance vide'));
+    await tester.tap(find.text('Séance libre'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Démarrer la séance'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ajouter des exercices'));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.widgetWithText(ListTile, exercise),
-        matching: find.byType(Checkbox),
-      ),
-    );
-    await tester.pump();
+    await checkExercise(tester, exercise);
     await tester.tap(find.textContaining('Ajouter ('));
     await tester.pumpAndSettle();
   }
@@ -57,7 +68,7 @@ void main() {
 
   Finder runningBar() => find.byType(LinearProgressIndicator);
 
-  testApp('une ligne de repos sous chaque série, avec le temps prévu '
+  testWorkout('une ligne de repos sous chaque série, avec le temps prévu '
       '(RT-03)', (tester) async {
     await startWorkoutWith(tester, 'Squat (barre)');
     await addSet(tester);
@@ -65,7 +76,7 @@ void main() {
     expect(find.text('2:00'), findsNWidgets(2));
   });
 
-  testApp('repos terminé : ligne surlignée comme la série validée', (
+  testWorkout('repos terminé : ligne surlignée comme la série validée', (
     tester,
   ) async {
     await startWorkoutWith(tester, 'Squat (barre)');
@@ -91,7 +102,7 @@ void main() {
     expect(isHighlighted(find.byType(RestLine).last), isFalse); // en cours
   });
 
-  testApp('valider une série lance le repos et programme la notification '
+  testWorkout('valider une série lance le repos et programme la notification '
       '(RT-02, RT-05)', (tester) async {
     await startWorkoutWith(tester, 'Squat (barre)');
 
@@ -102,7 +113,7 @@ void main() {
     expect(scheduled.single.nextExercise, 'Squat (barre)');
   });
 
-  testApp('dévalider la série arrête le repos', (tester) async {
+  testWorkout('dévalider la série arrête le repos', (tester) async {
     await startWorkoutWith(tester, 'Squat (barre)');
     await fillAndValidate(tester, 0);
 
@@ -114,7 +125,7 @@ void main() {
     expect(notificationsOf(tester).cancellations, 1);
   });
 
-  testApp('valider la série suivante déplace le repos sous celle-ci', (
+  testWorkout('valider la série suivante déplace le repos sous celle-ci', (
     tester,
   ) async {
     await startWorkoutWith(tester, 'Squat (barre)');
@@ -127,7 +138,7 @@ void main() {
     expect(notificationsOf(tester).scheduled, hasLength(2));
   });
 
-  testApp('toucher une ligne change le repos de cette série (RT-07)', (
+  testWorkout('toucher une ligne change le repos de cette série (RT-07)', (
     tester,
   ) async {
     await startWorkoutWith(tester, 'Squat (barre)');
@@ -139,7 +150,7 @@ void main() {
     expect(find.text('2:00'), findsOneWidget);
   });
 
-  testApp('… ou de toutes les séries de l’exercice', (tester) async {
+  testWorkout('… ou de toutes les séries de l’exercice', (tester) async {
     await startWorkoutWith(tester, 'Squat (barre)');
     await addSet(tester);
 
@@ -148,7 +159,7 @@ void main() {
     expect(find.text('1:30'), findsNWidgets(2));
   });
 
-  testApp('« Sans repos » : valider ne lance pas de minuteur (RT-01)', (
+  testWorkout('« Sans repos » : valider ne lance pas de minuteur (RT-01)', (
     tester,
   ) async {
     await startWorkoutWith(tester, 'Squat (barre)');
@@ -161,7 +172,7 @@ void main() {
     expect(notificationsOf(tester).scheduled, isEmpty);
   });
 
-  testApp(
+  testWorkout(
     'le repos par défaut de l’exercice s’applique (RG-09)',
     setUp: (db) => ExerciseRepository(db).updatePreferences(
       benchPressId,
@@ -175,7 +186,7 @@ void main() {
     },
   );
 
-  testApp('terminer la séance arrête le repos (RT-04)', (tester) async {
+  testWorkout('terminer la séance arrête le repos (RT-04)', (tester) async {
     await startWorkoutWith(tester, 'Squat (barre)');
     await fillAndValidate(tester, 0);
 

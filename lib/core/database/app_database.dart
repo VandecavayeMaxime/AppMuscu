@@ -34,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   /// 2. `dart run build_runner build` puis `dart run drift_dev make-migrations` ;
   /// 3. écrire l'étape `fromXToY` ci-dessous et compléter test/drift/.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -61,6 +61,13 @@ class AppDatabase extends _$AppDatabase {
             variables: [Variable(text), Variable(id)],
           );
         }
+      },
+      // v3 : modèles — valeurs prévues copiées dans les séries de la séance.
+      from2To3: (m, schema) async {
+        final sets = schema.workoutSets;
+        await m.addColumn(sets, sets.plannedWeightKg);
+        await m.addColumn(sets, sets.plannedReps);
+        await m.addColumn(sets, sets.plannedDurationSeconds);
       },
     ),
     // À chaque ouverture : SQLite n'applique les clés étrangères que si on le demande.

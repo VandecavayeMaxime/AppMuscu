@@ -1,9 +1,15 @@
 import 'package:clock/clock.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/database_provider.dart';
 import '../../../core/utils/text_normalizer.dart';
 import '../domain/exercise_enums.dart';
+
+final exerciseRepositoryProvider = Provider<ExerciseRepository>(
+  (ref) => ExerciseRepository(ref.watch(appDatabaseProvider)),
+);
 
 /// Accès à la bibliothèque d'exercices (docs/SPEC.md §5.1).
 class ExerciseRepository {

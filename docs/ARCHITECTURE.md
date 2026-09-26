@@ -11,7 +11,7 @@
 |---|---|---|
 | Framework | **Flutter** 3.47 (canal stable), Dart 3.13 | Choix du projet. Android uniquement pour l'instant ; la même base de code pourra viser iOS plus tard. |
 | Composants UI | **material_ui** | Material Design, sorti du framework Flutter (depuis 3.44) pour devenir un paquet à part. go_router 18 l'utilise déjà. On importe `package:material_ui/material_ui.dart` et **jamais** `package:flutter/material.dart` : les deux définissent des types différents, et les mélanger casse le thème. Les traductions françaises (`GlobalMaterialLocalizations`) sont incluses. |
-| État / injection | **Riverpod 3** (`flutter_riverpod`), **sans** générateur de code | Standard de fait, testable, s'accorde bien avec les flux réactifs de la base. Sans générateur, il y a moins de « magie » à comprendre. |
+| État / injection | **Riverpod 3.4** (`flutter_riverpod`), **sans** générateur de code | Standard de fait, testable, s'accorde bien avec les flux réactifs de la base. Sans générateur, il y a moins de « magie » à comprendre. Changements de la v3 à connaître : `AsyncValue.valueOrNull` est supprimé (on utilise `.value`), `StateProvider` est rangé dans `legacy.dart` (on utilise un `Notifier`), et un provider en erreur est relancé automatiquement. |
 | Base locale | **Drift** 2.35 (SQLite) + `drift_flutter` | Données relationnelles (séance → exercices → séries), requêtes typées, flux réactifs (`watch`), migrations versionnées. SQLite simplifie la future sync. SQLite lui-même est fourni par `sqlite3` 3.x, téléchargé automatiquement à la compilation (*build hooks*) pour Android et pour les tests sur PC. L'ancien paquet `sqlite3_flutter_libs` est abandonné. |
 | Navigation | **go_router** | Package officiel. Tous les écrans sont déclarés à un seul endroit, avec une adresse. `StatefulShellRoute` donne à chaque onglet sa propre pile d'écrans. Ouvrir la séance depuis la notification se fait par une simple adresse. Et c'est prêt pour les redirections de connexion en v2. |
 | Notifications | `flutter_local_notifications` + `timezone` | Notification programmée à la fin du repos (RT-05). |
@@ -60,7 +60,7 @@ test/                       # même arborescence que lib/ (+ helpers/ : base de 
 
 ### Navigation (go_router)
 
-Toutes les routes sont déclarées dans `lib/app/router.dart`.
+Toutes les routes sont déclarées dans `lib/app/router.dart`. Le routeur est fourni par `routerProvider` (Riverpod) : il est créé une seule fois par app, et à neuf pour chaque test.
 
 | Route | Écran | Affichage |
 |---|---|---|
@@ -212,7 +212,13 @@ ORDER BY position;
 |---|---|---|
 | Unitaire (domaine) | Volume, numérotation, nom par défaut, placeholder, temps de repos effectif, nettoyage de fin de séance, calculs du minuteur | `test` + horloge factice (`clock`) |
 | Unitaire (données) | Requête Précédent, contrainte « une seule séance en cours », suppression douce, migrations, seed | Drift en mémoire (`NativeDatabase.memory()`) |
-| Widget | Parcours : ajouter un exercice → remplir une série → valider → la ligne de repos sous la série passe « en cours » | `flutter_test` |
+| Widget | Parcours complets à travers l'app : chercher et créer un exercice (M2) ; ajouter un exercice → remplir une série → valider → la ligne de repos sous la série passe « en cours » (M3-M4) | `flutter_test` + `testApp()` (test/helpers/pump_app.dart) |
+
+**Pièges des tests de widgets avec Drift**, gérés par `testApp()` :
+- l'app doit être **démontée à l'intérieur du test**, suivi d'un `pump(Duration.zero)`. Drift ferme ses flux avec un minuteur de durée nulle, sinon le test échoue avec « A Timer is still pending » ;
+- ne jamais appeler `tester.pumpWidget` dans un `addTearDown` : le test reste bloqué ;
+- une liste n'affiche que ses éléments visibles, donc l'écran de test fait 360 × 1200 dp ;
+- lancer les tests avec `flutter test --timeout 60s`, pour qu'un test bloqué échoue vite au lieu d'attendre 10 minutes.
 | Manuel (téléphone) | Minuteur écran verrouillé, app tuée en pleine séance, reprise | Checklist à chaque jalon |
 
 ## 6. Environnement de développement (Windows)

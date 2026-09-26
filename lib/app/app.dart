@@ -1,14 +1,17 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'router.dart';
 import 'theme.dart';
 
 /// Racine de l'application : thème, langue et navigation.
-class AppMuscu extends StatelessWidget {
+///
+/// `ConsumerWidget` = widget qui peut lire des providers Riverpod via `ref`.
+class AppMuscu extends ConsumerWidget {
   const AppMuscu({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'AppMuscu',
       debugShowCheckedModeBanner: false,
@@ -20,7 +23,7 @@ class AppMuscu extends StatelessWidget {
       locale: const Locale('fr'),
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      routerConfig: appRouter,
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }

@@ -1,0 +1,61 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/database/app_database.dart';
+import '../data/exercise_repository.dart';
+import '../domain/exercise_enums.dart';
+
+/// Critères de la liste d'exercices : texte recherché et filtres (EX-02, EX-03).
+typedef ExerciseFilter = ({
+  String search,
+  BodyPart? bodyPart,
+  Equipment? equipment,
+});
+
+/// Critères choisis dans l'onglet Exercices. Un `Notifier` garde un état et
+/// expose les méthodes pour le modifier ; les écrans qui le regardent sont
+/// reconstruits à chaque changement.
+class ExerciseFilterNotifier extends Notifier<ExerciseFilter> {
+  @override
+  ExerciseFilter build() => (search: '', bodyPart: null, equipment: null);
+
+  void search(String text) => state = (
+    search: text,
+    bodyPart: state.bodyPart,
+    equipment: state.equipment,
+  );
+
+  void filterBodyPart(BodyPart? bodyPart) => state = (
+    search: state.search,
+    bodyPart: bodyPart,
+    equipment: state.equipment,
+  );
+
+  void filterEquipment(Equipment? equipment) => state = (
+    search: state.search,
+    bodyPart: state.bodyPart,
+    equipment: equipment,
+  );
+}
+
+final exerciseFilterProvider =
+    NotifierProvider<ExerciseFilterNotifier, ExerciseFilter>(
+      ExerciseFilterNotifier.new,
+    );
+
+/// Exercices correspondant aux critères, mis à jour en direct.
+final exerciseListProvider = StreamProvider<List<Exercise>>((ref) {
+  final filter = ref.watch(exerciseFilterProvider);
+  return ref
+      .watch(exerciseRepositoryProvider)
+      .watchExercises(
+        search: filter.search,
+        bodyPart: filter.bodyPart,
+        equipment: filter.equipment,
+      );
+});
+
+/// Un exercice précis, pour l'écran de modification.
+final exerciseByIdProvider = FutureProvider.autoDispose
+    .family<Exercise?, String>(
+      (ref, id) => ref.watch(exerciseRepositoryProvider).findById(id),
+    );

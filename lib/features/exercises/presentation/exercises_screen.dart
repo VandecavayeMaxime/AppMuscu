@@ -1,20 +1,208 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../domain/exercise_enums.dart';
+import 'exercise_providers.dart';
 
-/// Onglet « Exercices » : bibliothèque, recherche, exercices perso (M2).
-class ExercisesScreen extends StatelessWidget {
+/// Onglet « Exercices » : bibliothèque, recherche et filtres (EX-02, EX-03).
+class ExercisesScreen extends ConsumerStatefulWidget {
   const ExercisesScreen({super.key});
 
   @override
+  ConsumerState<ExercisesScreen> createState() => _ExercisesScreenState();
+}
+
+class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
+  late final _searchController = TextEditingController(
+    text: ref.read(exerciseFilterProvider).search,
+  );
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filter = ref.watch(exerciseFilterProvider);
+    final filterNotifier = ref.read(exerciseFilterProvider.notifier);
+    final exercises = ref.watch(exerciseListProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Exercices')),
-      body: const EmptyState(
-        icon: Icons.menu_book,
-        title: "Bibliothèque d'exercices",
-        message: 'Arrive au jalon M2.',
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Nouvel exercice',
+        onPressed: () => context.go('/exercices/nouveau'),
+        child: const Icon(Icons.add),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SearchBar(
+              controller: _searchController,
+              hintText: 'Rechercher un exercice',
+              leading: const Icon(Icons.search),
+              trailing: [
+                if (filter.search.isNotEmpty)
+                  IconButton(
+                    tooltip: 'Effacer la recherche',
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      filterNotifier.search('');
+                    },
+                  ),
+              ],
+              onChanged: filterNotifier.search,
+            ),
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              spacing: 8,
+              children: [
+                _FilterChip<BodyPart>(
+                  label: 'Groupe musculaire',
+                  selected: filter.bodyPart,
+                  values: BodyPart.values,
+                  labelOf: (value) => value.label,
+                  onChanged: filterNotifier.filterBodyPart,
+                ),
+                _FilterChip<Equipment>(
+                  label: 'Équipement',
+                  selected: filter.equipment,
+                  values: Equipment.values,
+                  labelOf: (value) => value.label,
+                  onChanged: filterNotifier.filterEquipment,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            // Un AsyncValue a trois états : données, chargement, erreur.
+            // skipLoadingOnReload : pendant une nouvelle recherche, on garde
+            // la liste précédente affichée plutôt qu'un indicateur de chargement.
+            child: exercises.when(
+              skipLoadingOnReload: true,
+              data: (list) => list.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.search_off,
+                      title: 'Aucun exercice trouvé',
+                      message: 'Essaie un autre nom ou retire les filtres.',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(
+                        bottom: 88,
+                      ), // place du bouton +
+                      itemCount: list.length,
+                      itemBuilder: (context, index) =>
+                          _ExerciseTile(list[index]),
+                    ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => EmptyState(
+                icon: Icons.error_outline,
+                title: 'Impossible de charger les exercices',
+                message: '$error',
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _ExerciseTile extends StatelessWidget {
+  const _ExerciseTile(this.exercise);
+
+  final Exercise exercise;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(
+        child: Text(exercise.name.characters.first.toUpperCase()),
+      ),
+      title: Text(exercise.name),
+      subtitle: Text(
+        '${exercise.bodyPart.label} · ${exercise.equipment.label}',
+      ),
+      // Seuls les exercices perso sont modifiables (EX-05).
+      trailing: exercise.isCustom ? const Icon(Icons.chevron_right) : null,
+      onTap: exercise.isCustom
+          ? () => context.go('/exercices/${exercise.id}')
+          : null,
+    );
+  }
+}
+
+/// Puce de filtre. Sans filtre : affiche [label] et ouvre la liste des choix.
+/// Avec un filtre : affiche la valeur choisie, avec une croix pour le retirer.
+class _FilterChip<T> extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.values,
+    required this.labelOf,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T? selected;
+  final List<T> values;
+  final String Function(T value) labelOf;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = this.selected;
+    if (selected == null) {
+      return ActionChip(
+        avatar: const Icon(Icons.filter_list),
+        label: Text(label),
+        onPressed: () => _choose(context),
+      );
+    }
+    return InputChip(
+      label: Text(labelOf(selected)),
+      selected: true,
+      onPressed: () => _choose(context),
+      onDeleted: () => onChanged(null),
+      deleteButtonTooltipMessage: 'Retirer le filtre',
+    );
+  }
+
+  Future<void> _choose(BuildContext context) async {
+    final choice = await showModalBottomSheet<T>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            for (final value in values)
+              ListTile(
+                title: Text(labelOf(value)),
+                trailing: value == selected ? const Icon(Icons.check) : null,
+                onTap: () => Navigator.pop(context, value),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice != null) onChanged(choice);
   }
 }

@@ -602,4 +602,32 @@ void main() {
     );
     expect(find.byType(TextField), findsNWidgets(3)); // séries revenues
   });
+
+  group('toucher la notification de fin de repos (RT-10)', () {
+    testWorkout('ouvre la séance en cours', (tester) async {
+      await startWorkout(tester);
+      await tester.tap(find.byTooltip('Réduire'));
+      await tester.pumpAndSettle();
+      await tester.tap(tab('Exercices'));
+      await tester.pumpAndSettle();
+
+      notificationsOf(tester).tap();
+      await tester.pumpAndSettle();
+      expect(find.text('Terminer'), findsOneWidget);
+
+      // Déjà sur la séance : rien ne change (pas de seconde séance empilée).
+      notificationsOf(tester).tap();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Réduire'));
+      await tester.pumpAndSettle();
+      expect(find.text('Terminer'), findsNothing);
+    });
+
+    testWorkout('sans séance en cours, ne fait rien', (tester) async {
+      notificationsOf(tester).tap();
+      await tester.pumpAndSettle();
+      expect(find.text('Modèles'), findsOneWidget);
+      expect(find.text('Aucune séance en cours'), findsNothing);
+    });
+  });
 }

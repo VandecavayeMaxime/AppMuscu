@@ -191,6 +191,29 @@ void main() {
   );
 
   testApp(
+    'appui long sur une carte : réordonner les modèles (TP-08)',
+    setUp: (db) async {
+      await addTemplate(db, name: 'Push');
+      await addTemplate(db, name: 'Jambes', exerciseId: squatId);
+    },
+    (tester) async {
+      double top(String name) => tester.getTopLeft(find.text(name)).dy;
+      expect(top('Push'), lessThan(top('Jambes')));
+
+      await tester.longPress(find.text('Jambes'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Glisse les modèles pour changer leur ordre'),
+        findsOneWidget,
+      );
+      await dragUp(tester, 'Jambes');
+      await tapAndSettle(tester, find.text('OK'));
+
+      expect(top('Jambes'), lessThan(top('Push')));
+    },
+  );
+
+  testApp(
     'dupliquer puis supprimer un modèle (TP-04, TP-03)',
     setUp: (db) => addTemplate(db),
     (tester) async {

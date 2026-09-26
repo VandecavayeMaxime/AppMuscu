@@ -190,6 +190,14 @@ Autres exemples : `platforms/android-36`, `build-tools/36.0.0`. Pour voir ce qui
 - **Xiaomi :** l'option *Installer via USB* doit être activée. Sinon l'installation échoue sans message. Chaque installation affiche une fenêtre de confirmation avec un **compte à rebours d'environ 10 s** : sans réponse, elle est refusée automatiquement.
 - **Connexion USB qui décroche** sur les gros fichiers : le transport_id de `adb devices -l` augmente à chaque reconnexion, et un `adb push` de plus de 100 Mo se fige. Changer de câble ou de port, ou passer au **débogage sans fil** (étape 7 bis).
 
+### Notification « Repos terminé » seulement quand l'app est ouverte (Xiaomi)
+
+HyperOS **gèle** les apps en arrière-plan au bout de quelques secondes : l'alarme de fin de repos est mise de côté jusqu'à la réouverture de l'app. Dans les journaux (`adb logcat`), on voit `GreezeManager: FZ uid=… reason=tobg`, puis `cached alarm!`.
+
+- Réglage à essayer : **Paramètres → Applications → AppMuscu → Économiseur de batterie → « Aucune restriction »**, et activer **Démarrage automatique**.
+- La case « Suspendre l'activité de l'application si elle n'est pas utilisée » n'y change rien : elle concerne les apps inutilisées pendant des mois.
+- Si le réglage ne suffit pas, la correction est côté app (voir docs/ARCHITECTURE.md, Minuteur de repos).
+
 ---
 
 ✅ **Quand tout est vert**, préviens Claude : il relancera les vérifications et on démarre le jalon **M0**.

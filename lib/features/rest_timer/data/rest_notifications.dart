@@ -24,6 +24,10 @@ abstract interface class RestNotifications {
 
   /// Annule la notification programmée, s'il y en a une.
   Future<void> cancelRestEnd();
+
+  /// Appelle [onTap] quand on touche la notification (RT-10), y compris si
+  /// c'est ce geste qui a lancé l'app.
+  Future<void> listenToTaps(void Function() onTap);
 }
 
 /// Implémentation réelle, avec flutter_local_notifications.
@@ -34,6 +38,7 @@ abstract interface class RestNotifications {
 class LocalRestNotifications implements RestNotifications {
   final _plugin = FlutterLocalNotificationsPlugin();
   Future<void>? _initialization;
+  void Function()? _onTap;
 
   /// Toujours le même identifiant : programmer un nouveau repos remplace
   /// la notification précédente.
@@ -78,6 +83,8 @@ class LocalRestNotifications implements RestNotifications {
         settings: const InitializationSettings(
           android: AndroidInitializationSettings('ic_stat_rest'),
         ),
+        // Notification touchée pendant que l'app tourne (même en arrière-plan).
+        onDidReceiveNotificationResponse: (_) => _onTap?.call(),
       )
       .then((_) {});
 
@@ -113,6 +120,19 @@ class LocalRestNotifications implements RestNotifications {
     } catch (error) {
       // Le minuteur reste visible dans l'app même sans notification.
       debugPrint('Notification de repos impossible : $error');
+    }
+  }
+
+  @override
+  Future<void> listenToTaps(void Function() onTap) async {
+    _onTap = onTap;
+    try {
+      await _ensureInitialized();
+      // App fermée : c'est le toucher de la notification qui l'a lancée.
+      final launch = await _plugin.getNotificationAppLaunchDetails();
+      if (launch?.didNotificationLaunchApp ?? false) onTap();
+    } catch (error) {
+      debugPrint('Écoute des notifications impossible : $error');
     }
   }
 

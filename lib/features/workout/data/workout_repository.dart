@@ -38,6 +38,13 @@ class WorkoutRepository {
         .watchSingleOrNull();
   }
 
+  /// Comme [watchActiveWorkout], en une seule lecture.
+  Future<Workout?> getActiveWorkout() {
+    return (_db.select(_db.workouts)
+          ..where((w) => w.endedAt.isNull() & w.deletedAt.isNull()))
+        .getSingleOrNull();
+  }
+
   /// Une séance avec ses exercices et ses séries, mis à jour en direct.
   Stream<WorkoutDetails?> watchWorkoutDetails(String workoutId) =>
       _detailsQuery(workoutId).watch().map(_toDetails);

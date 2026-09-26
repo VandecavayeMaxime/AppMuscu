@@ -113,7 +113,7 @@ Le menu ⋯ (Modifier, Supprimer) n'existe que pour les exercices perso.
 └──────────────────────────────────┘      └──────────────────────────────────┘
 ```
 
-Menu ⋯ d'une carte : Modifier, Dupliquer, Supprimer. Menu ⋯ d'un exercice dans l'éditeur : Réorganiser, Retirer du modèle.
+Menu ⋯ d'une carte : Modifier, Dupliquer, Réorganiser, Supprimer (appui long sur une carte = Réorganiser). Menu ⋯ d'un exercice dans l'éditeur : Réorganiser, Retirer du modèle.
 
 ### Maquette : réorganiser les exercices (séance et éditeur de modèle)
 
@@ -232,7 +232,7 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | WO-13 | Le menu ⋯ d'un exercice permet d'ajouter ou modifier **sa note** (EX-11, celle de l'exercice, pas de la séance), de le réorganiser (WO-15) et de le retirer de la séance. | M |
 | WO-14 | Remplacer un exercice par un autre en gardant les séries (depuis le menu ⋯). | C |
 | WO-15 | Réordonner les exercices par glisser-déposer : un appui long sur le nom d'un exercice (ou ⋯ → « Réorganiser ») réduit tous les exercices à une ligne ; on les fait glisser par la poignée ≡, puis « OK » rend l'affichage normal. Même geste dans l'éditeur de modèle. | S |
-| WO-16 | Ajouter une note à la séance (texte libre). | S |
+| ~~WO-16~~ | ~~Ajouter une note à la séance.~~ *Abandonnée (D16) : seule la note d'exercice (EX-11) existe.* | — |
 | WO-17 | **Terminer la séance.** Une série non validée est dite *remplie* si toutes les valeurs de son type de suivi sont saisies (kg et reps, reps, ou durée). Les séries non validées vides ou incomplètes sont supprimées sans rien demander. S'il reste des séries remplies, une fenêtre simple, sans détail série par série, propose « Compléter » (les valider), « Jeter » (seulement s'il y a déjà au moins une série validée) ou « Annuler ». Les exercices qui n'ont plus aucune série sont retirés. S'il n'y a ni série validée ni série remplie, la séance ne peut pas être terminée : l'app propose de l'abandonner. | M |
 | WO-18 | Après la fin, un **écran de résumé** affiche le nom, la date et les horaires (début → fin), la durée, le nombre d'exercices et de séries, et le volume total. Puis, pour chaque exercice : toutes ses séries validées (★ = meilleure, RG-13) et la **comparaison avec la dernière fois**, c'est-à-dire l'évolution du total (volume en kg, reps ou durée selon le type de suivi) avec son écart, et celle de la meilleure série (▲ / ▼ / =), avec la meilleure série de la dernière fois. « Première fois avec cet exercice » s'il n'y a pas de séance précédente. | M |
 | WO-19 | Abandonner la séance (avec confirmation) la supprime définitivement. | M |
@@ -252,20 +252,21 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | RT-06 | Le minuteur reste exact quand l'app passe en arrière-plan, est tuée ou que l'écran se verrouille, car il repose sur une heure de fin absolue et non sur un décompte. | M |
 | RT-07 | Taper sur une ligne de repos permet de modifier le temps de repos **de cette série**, avec une option « Appliquer à toutes les séries de l'exercice ». | M |
 | RT-08 | Si la ligne de repos en cours sort de l'écran (défilement) ou si la séance est réduite (WO-20), un compteur compact « ⏱ 1:12 » s'affiche dans l'en-tête ou la barre réduite. Un tap dessus ramène à la ligne. | S |
-| RT-09 | Dans le réglage de RT-07, une option « Enregistrer comme défaut pour cet exercice » met aussi à jour la bibliothèque. | C |
+| RT-09 | Dans le réglage de RT-07 (séance ou éditeur de modèle), une case « Enregistrer comme défaut de l'exercice » met aussi à jour la bibliothèque, tout de suite. Quand elle est cochée, le choix « Par défaut » disparaît. | C |
+| RT-10 | Toucher la notification « Repos terminé » ouvre la séance en cours, que l'app soit en arrière-plan, sur un autre onglet ou fermée. Rien ne change si la séance est déjà affichée ou s'il n'y a plus de séance en cours. | S |
 
 ### 5.4 Modèles (TP)
 
 | ID | Exigence | Prio |
 |---|---|---|
-| TP-01 | Créer un modèle : nom, exercices ordonnés (glisser-déposer, comme WO-15), séries prévues (kg, reps ou durée, **temps de repos**), toutes facultatives. L'éditeur a la présentation de la séance, sans « Précédent » ni case ✓. Il faut un nom et au moins un exercice ; chaque exercice garde au moins une série. Les modifications ne sont enregistrées qu'avec « Enregistrer » ; quitter avant demande confirmation. *La note de modèle est reportée avec la note de séance (WO-16).* | M |
+| TP-01 | Créer un modèle : nom, exercices ordonnés (glisser-déposer, comme WO-15), séries prévues (kg, reps ou durée, **temps de repos**), toutes facultatives. L'éditeur a la présentation de la séance, sans « Précédent » ni case ✓. Il faut un nom et au moins un exercice ; chaque exercice garde au moins une série. Les modifications ne sont enregistrées qu'avec « Enregistrer » ; quitter avant demande confirmation. | M |
 | TP-02 | L'onglet Séance liste les modèles. Chaque carte affiche le nom, un aperçu des exercices, un par ligne (« 3 × Développé couché », « 4 × Squat »…) et la date de dernière utilisation (« Hier », « Il y a 3 jours », « Jamais utilisé »). | M |
 | TP-03 | Modifier, renommer ou supprimer un modèle (avec confirmation), depuis le menu ⋯ de sa carte. Supprimer un modèle ne touche pas aux séances passées. | M |
 | TP-04 | Dupliquer un modèle (« Push (copie) », en fin de liste). | S |
 | TP-05 | **Démarrer une séance depuis un modèle** : toucher la carte ouvre un aperçu avec « Démarrer la séance » (WO-02 s'applique). La séance reprend le nom, les exercices et les séries (nombre, temps de repos) du modèle. Les kg/reps du modèle deviennent les placeholders (RG-11) ; ils sont copiés dans la séance, que modifier le modèle ensuite ne change pas. | M |
 | ~~TP-06~~ | ~~Créer un modèle à partir d'une séance terminée.~~ *Supprimée (D14) : toute séance vient d'un modèle.* | — |
 | TP-07 | Quand une séance issue d'un modèle diffère de ce modèle (exercices, ordre, nombre de séries, valeurs réalisées ou temps de repos), le résumé affiche « La séance diffère du modèle » avec un bouton « Mettre à jour le modèle ». Le modèle prend alors les séries validées de la séance. Sans action, il ne change pas. | S |
-| TP-08 | Réordonner les modèles. | C |
+| TP-08 | Réordonner les modèles : appui long sur une carte (ou ⋯ → « Réorganiser »), les modèles se réduisent à une ligne, on les fait glisser par la poignée ≡, puis « OK » (même geste que WO-15). | C |
 
 ### 5.5 Réglages (ST)
 
@@ -344,3 +345,4 @@ Priorités : **M** = Must (indispensable au MVP) · **S** = Should (MVP si le te
 | D13 | Modèles | Séries avec kg/reps prévus (comme Strong), copiés dans la séance au démarrage. Toucher une carte ouvre un aperçu avec « Démarrer » (pas de démarrage en 1 tap). La mise à jour du modèle se propose dans le résumé, sans fenêtre supplémentaire |
 | D14 | Après les premiers essais du M5 | **Plus de séance vide** : toute séance démarre d'un modèle (WO-01), d'où la suppression de TP-06 et du nom selon l'heure (RG-05). Le **sélecteur d'exercices est l'onglet Exercices** en mode sélection, pour que les deux évoluent ensemble (WO-04). Réordonner les exercices par **glisser-déposer après réduction**, comme Strong (WO-15, TP-01). Carte de modèle : un exercice par ligne (TP-02) |
 | D15 | M6 | La **note est attachée à l'exercice**, où qu'on la saisisse, et non plus à la séance (EX-11). La séance réduite remplace la carte « Séance en cours » de l'onglet Séance. Écran allumé désactivé au départ. **Pas d'APK release** pour l'instant : d'autres fonctionnalités passent avant |
+| D16 | Dernières idées du MVP | **Pas de note de séance** (WO-16 abandonnée, pas de note de modèle non plus) : la note d'exercice suffit. Faits : réordonner les modèles (TP-08), repos enregistré comme défaut de l'exercice (RT-09), notification qui ouvre la séance (RT-10). APK release toujours reporté |

@@ -7,6 +7,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/utils/relative_date_format.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/reorder_list.dart';
 import '../../rest_timer/presentation/rest_timer_providers.dart';
 import '../../workout/data/workout_repository.dart';
 import '../../workout/presentation/workout_providers.dart';
@@ -14,17 +15,31 @@ import '../data/template_repository.dart';
 import '../domain/template_preview.dart';
 import 'template_providers.dart';
 
-/// Section « Modèles » de l'onglet Séance (TP-02) : une carte par modèle,
-/// et un bouton pour en créer un.
-class TemplateSection extends ConsumerWidget {
-  const TemplateSection({super.key});
+/// Les modèles de l'onglet Séance (TP-02) : une carte par modèle et un
+/// bouton pour en créer un. Un appui long sur une carte (ou ⋯ →
+/// « Réorganiser ») permet de les réordonner (TP-08).
+class TemplateList extends ConsumerStatefulWidget {
+  const TemplateList({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final templates = ref.watch(templateListProvider).value;
+  ConsumerState<TemplateList> createState() => _TemplateListState();
+}
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+class _TemplateListState extends ConsumerState<TemplateList> {
+  /// Mode « réorganiser » : ordre affiché pendant le glisser-déposer, sans
+  /// attendre que la base confirme. `null` = affichage normal.
+  List<String>? _order;
+
+  @override
+  Widget build(BuildContext context) {
+    final templates = ref.watch(templateListProvider).value;
+    final order = _order;
+    if (order != null && templates != null) {
+      return _reorderList(templates, order);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
         Row(
           children: [
@@ -55,10 +70,41 @@ class TemplateSection extends ConsumerWidget {
           ],
           final templates => [
             for (final details in templates)
-              _TemplateCard(details, key: ValueKey(details.template.id)),
+              _TemplateCard(
+                details,
+                key: ValueKey(details.template.id),
+                onReorder: templates.length < 2
+                    ? null
+                    : () => setState(
+                        () => _order = [
+                          for (final item in templates) item.template.id,
+                        ],
+                      ),
+              ),
           ],
         },
       ],
+    );
+  }
+
+  Widget _reorderList(List<TemplateDetails> templates, List<String> order) {
+    final byId = {for (final item in templates) item.template.id: item};
+    final ids = [
+      for (final id in order)
+        if (byId.containsKey(id)) id,
+    ];
+    return ReorderList(
+      hint: 'Glisse les modèles pour changer leur ordre',
+      items: [
+        for (final id in ids)
+          (key: ValueKey(id), name: byId[id]!.template.name),
+      ],
+      onMove: (from, to) {
+        ids.insert(to, ids.removeAt(from));
+        setState(() => _order = ids);
+        ref.read(templateRepositoryProvider).reorderTemplates(ids);
+      },
+      onDone: () => setState(() => _order = null),
     );
   }
 }
@@ -71,15 +117,18 @@ String _lastUsedLabel(TemplateDetails details) {
       : formatRelativeDay(lastUsed, clock.now());
 }
 
-enum _TemplateAction { edit, duplicate, delete }
+enum _TemplateAction { edit, duplicate, reorder, delete }
 
 /// Carte d'un modèle : nom, aperçu des exercices, dernière utilisation.
 /// La toucher ouvre l'aperçu ; le menu ⋯ permet de le modifier, le
-/// dupliquer ou le supprimer.
+/// dupliquer, réorganiser les modèles ou le supprimer.
 class _TemplateCard extends ConsumerWidget {
-  const _TemplateCard(this.details, {super.key});
+  const _TemplateCard(this.details, {super.key, this.onReorder});
 
   final TemplateDetails details;
+
+  /// Passe en mode « réorganiser » ; `null` s'il n'y a qu'un modèle.
+  final VoidCallback? onReorder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -90,6 +139,7 @@ class _TemplateCard extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => _preview(context, ref),
+        onLongPress: onReorder,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 4, 16),
           child: Column(
@@ -108,16 +158,21 @@ class _TemplateCard extends ConsumerWidget {
                     tooltip: 'Options du modèle',
                     icon: const Icon(Icons.more_horiz),
                     onSelected: (action) => _onAction(context, ref, action),
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
                         value: _TemplateAction.edit,
                         child: Text('Modifier'),
                       ),
-                      PopupMenuItem(
+                      const PopupMenuItem(
                         value: _TemplateAction.duplicate,
                         child: Text('Dupliquer'),
                       ),
-                      PopupMenuItem(
+                      if (onReorder != null)
+                        const PopupMenuItem(
+                          value: _TemplateAction.reorder,
+                          child: Text('Réorganiser'),
+                        ),
+                      const PopupMenuItem(
                         value: _TemplateAction.delete,
                         child: Text('Supprimer'),
                       ),
@@ -176,6 +231,8 @@ class _TemplateCard extends ConsumerWidget {
         await context.push('/seance/modeles/${template.id}');
       case _TemplateAction.duplicate:
         await repository.duplicateTemplate(template.id);
+      case _TemplateAction.reorder:
+        onReorder?.call();
       case _TemplateAction.delete:
         final confirmed = await showConfirmDialog(
           context,

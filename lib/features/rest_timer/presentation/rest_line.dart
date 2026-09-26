@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/clock_tick.dart';
 import '../../../core/utils/duration_format.dart';
+import '../../exercises/data/exercise_repository.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../workout/data/workout_repository.dart';
 import '../../workout/presentation/set_row.dart';
@@ -82,6 +83,7 @@ class RestLine extends ConsumerWidget {
     } else {
       await repository.setSetRest(set.id, choice.seconds);
     }
+    await saveRestAsDefault(ref, exercise, choice);
   }
 }
 
@@ -162,8 +164,9 @@ class _RunningBar extends StatelessWidget {
 }
 
 /// Temps choisi (`null` = par défaut, 0 = sans repos), pour une série ou
-/// pour toutes celles de l'exercice.
-typedef RestChoice = ({int? seconds, bool allSets});
+/// pour toutes celles de l'exercice, et éventuellement à enregistrer comme
+/// temps par défaut de l'exercice (RT-09).
+typedef RestChoice = ({int? seconds, bool allSets, bool saveAsDefault});
 
 /// Feuille de choix du temps de repos (RT-07), partagée par la séance et
 /// l'éditeur de modèle. Renvoie `null` si elle est fermée sans choix.
@@ -178,6 +181,20 @@ Future<RestChoice?> showRestPicker(
     builder: (context) =>
         _RestPicker(current: current, defaultSeconds: defaultSeconds),
   );
+}
+
+/// « Enregistrer comme défaut de l'exercice » (RT-09) : met aussi à jour la
+/// bibliothèque, tout de suite.
+Future<void> saveRestAsDefault(
+  WidgetRef ref,
+  Exercise exercise,
+  RestChoice choice,
+) async {
+  final seconds = choice.seconds;
+  if (!choice.saveAsDefault || seconds == null) return;
+  await ref
+      .read(exerciseRepositoryProvider)
+      .updateDefaultRest(exercise.id, seconds);
 }
 
 /// Même feuille pour le temps de repos global des réglages (ST-01) : ni
@@ -213,6 +230,7 @@ class _RestPicker extends StatefulWidget {
 
 class _RestPickerState extends State<_RestPicker> {
   bool _allSets = false;
+  bool _saveAsDefault = false;
 
   @override
   Widget build(BuildContext context) {
@@ -241,16 +259,29 @@ class _RestPickerState extends State<_RestPicker> {
               title: const Text("Appliquer à toutes les séries de l'exercice"),
               onChanged: (value) => setState(() => _allSets = value ?? false),
             ),
+            CheckboxListTile(
+              value: _saveAsDefault,
+              title: const Text("Enregistrer comme défaut de l'exercice"),
+              onChanged: (value) =>
+                  setState(() => _saveAsDefault = value ?? false),
+            ),
             const Divider(),
           ],
-          for (final seconds in <int?>[if (forSet) null, ...restChoices])
+          // « Par défaut » n'a pas de sens si on enregistre un nouveau défaut.
+          for (final seconds in <int?>[
+            if (forSet && !_saveAsDefault) null,
+            ...restChoices,
+          ])
             ListTile(
               title: Text(label(seconds)),
               trailing: seconds == widget.current
                   ? const Icon(Icons.check)
                   : null,
-              onTap: () =>
-                  Navigator.pop(context, (seconds: seconds, allSets: _allSets)),
+              onTap: () => Navigator.pop(context, (
+                seconds: seconds,
+                allSets: _allSets,
+                saveAsDefault: _saveAsDefault,
+              )),
             ),
         ],
       ),

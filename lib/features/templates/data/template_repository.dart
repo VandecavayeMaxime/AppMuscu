@@ -173,6 +173,19 @@ class TemplateRepository {
     });
   }
 
+  /// Nouvel ordre des modèles dans l'onglet Séance (TP-08) : [templateIds]
+  /// dans l'ordre voulu.
+  Future<void> reorderTemplates(List<String> templateIds) {
+    return _db.transaction(() async {
+      final now = clock.now();
+      for (final (position, id) in templateIds.indexed) {
+        await (_db.update(_db.templates)..where((t) => t.id.equals(id))).write(
+          TemplatesCompanion(position: Value(position), updatedAt: Value(now)),
+        );
+      }
+    });
+  }
+
   /// Copie d'un modèle, nommée « … (copie) », en fin de liste (TP-04).
   Future<String?> duplicateTemplate(String templateId) async {
     final details = await getTemplate(templateId);

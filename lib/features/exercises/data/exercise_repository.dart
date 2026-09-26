@@ -120,6 +120,17 @@ class ExerciseRepository {
     );
   }
 
+  /// Temps de repos par défaut d'un exercice (EX-08), réglé depuis une
+  /// ligne de repos (RT-09).
+  Future<void> updateDefaultRest(String id, int seconds) async {
+    await (_db.update(_db.exercises)..where((e) => e.id.equals(id))).write(
+      ExercisesCompanion(
+        defaultRestSeconds: Value(seconds),
+        updatedAt: Value(clock.now()),
+      ),
+    );
+  }
+
   /// Note personnelle d'un exercice, intégré ou perso (EX-11) ; vide = aucune.
   Future<void> updateNote(String id, String? note) async {
     final text = note?.trim() ?? '';

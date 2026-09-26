@@ -53,6 +53,7 @@ void main() {
     WidgetTester tester,
     String choice, {
     bool allSets = false,
+    bool saveAsDefault = false,
   }) async {
     await tester.tap(find.text('2:00').first);
     await tester.pumpAndSettle();
@@ -61,6 +62,12 @@ void main() {
         find.text("Appliquer à toutes les séries de l'exercice"),
       );
       await tester.pump();
+    }
+    if (saveAsDefault) {
+      await tester.tap(find.text("Enregistrer comme défaut de l'exercice"));
+      await tester.pump();
+      // Choisir « Par défaut » n'aurait plus de sens.
+      expect(find.text('Par défaut (2:00)'), findsNothing);
     }
     await tester.tap(find.text(choice).last);
     await tester.pumpAndSettle();
@@ -157,6 +164,26 @@ void main() {
     await chooseRest(tester, '1:30', allSets: true);
 
     expect(find.text('1:30'), findsNWidgets(2));
+  });
+
+  testWorkout('… et l’enregistrer comme défaut de l’exercice (RT-09)', (
+    tester,
+  ) async {
+    await startWorkoutWith(tester, 'Squat (barre)');
+
+    await chooseRest(tester, '1:30', saveAsDefault: true);
+    expect(find.text('1:30'), findsOneWidget);
+
+    // La fiche de l'exercice a bien le nouveau temps par défaut.
+    await tester.tap(find.text('Squat (barre)'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, 'Minuteur de repos'),
+        matching: find.text('1:30'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWorkout('« Sans repos » : valider ne lance pas de minuteur (RT-01)', (

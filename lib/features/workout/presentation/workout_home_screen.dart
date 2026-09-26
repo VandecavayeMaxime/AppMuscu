@@ -12,10 +12,7 @@ class WorkoutHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Séance')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [TemplateSection()],
-      ),
+      body: const TemplateList(),
     );
   }
 }

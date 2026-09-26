@@ -28,7 +28,7 @@ Le terminal de Claude doit d'abord recharger le PATH : `$env:Path = [Environment
 
 ## Tests
 
-- Tests de widgets via `testApp(description, (tester) async {...}, setUp: (db) async {...})` dans `test/helpers/pump_app.dart` : app complète, base en mémoire, chronomètres figés, fausses notifications (`notificationsOf(tester)`) et fausse mise en veille (`screenAwakeOf(tester)`). L'app est démontée **dans** le test (minuteur Drift).
+- Tests de widgets via `testApp(description, (tester) async {...}, setUp: (db) async {...})` dans `test/helpers/pump_app.dart` : app complète, base en mémoire, chronomètres figés, fausses notifications (`notificationsOf(tester)`, `.tap()` pour simuler un toucher) et fausse mise en veille (`screenAwakeOf(tester)`). L'app est démontée **dans** le test (minuteur Drift).
 - Données de test : `test/helpers/test_database.dart` (`createTestDatabase()`, `addWorkout(db, day:, sets: [TestSet(80, 8)], …)`, `addTemplate(db, sets: [(80, 8)])`, `addEmptyTemplate(db)` (toute séance part d'un modèle : les tests de séance démarrent « Séance libre », un modèle vide), ids `benchPressId`, `squatId`, `pullUpId`).
 - Sélecteur d'exercices : `checkExercise(tester, nom)` fait défiler la liste avant de cocher. Réorganiser : `dragUp(tester, nom)`.
 - Pièges : un geste de balayage doit partir hors d'un champ texte ; attendre une écriture Drift avec `get()` plutôt que `watch().first` dans du code appelé depuis l'UI ; `pump()` après `enterText` avant un geste qui dépend de l'écran redessiné.

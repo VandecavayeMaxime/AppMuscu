@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/reorder_list.dart';
 import '../../../core/widgets/text_input_dialog.dart';
 import '../../exercises/presentation/exercise_note.dart';
 import '../../rest_timer/presentation/rest_countdown.dart';
@@ -15,7 +16,6 @@ import '../data/workout_repository.dart';
 import '../domain/set_numbering.dart';
 import '../domain/set_rules.dart';
 import 'elapsed_time.dart';
-import 'exercise_reorder_list.dart';
 import 'set_row.dart';
 import 'workout_providers.dart';
 
@@ -211,7 +211,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
       for (final id in _order!)
         if (byId.containsKey(id)) id,
     ];
-    return ExerciseReorderList(
+    return ReorderList(
       items: [
         for (final id in order)
           (key: ValueKey(id), name: byId[id]!.exercise.name),

@@ -1,27 +1,31 @@
 import 'package:material_ui/material_ui.dart';
 
-/// Un exercice dans la liste de réorganisation.
+/// Un élément de la liste de réorganisation.
 typedef ReorderItem = ({Key key, String name});
 
-/// Mode « réorganiser » (WO-15, TP-01), commun à la séance et à l'éditeur de
-/// modèle : les exercices sont réduits à une ligne, sans leurs séries, pour
-/// qu'on puisse les faire glisser facilement. On les attrape par la poignée
-/// ≡ (ou par un appui long sur la ligne), puis « OK » rend l'affichage
-/// normal.
-class ExerciseReorderList extends StatelessWidget {
-  const ExerciseReorderList({
+/// Mode « réorganiser », commun aux exercices de la séance (WO-15) et d'un
+/// modèle (TP-01), et aux modèles eux-mêmes (TP-08) : chaque élément est
+/// réduit à une ligne, pour qu'on puisse le faire glisser facilement. On
+/// l'attrape par la poignée ≡ (ou par un appui long sur la ligne), puis
+/// « OK » rend l'affichage normal.
+class ReorderList extends StatelessWidget {
+  const ReorderList({
     super.key,
     required this.items,
     required this.onMove,
     required this.onDone,
+    this.hint = 'Glisse les exercices pour changer leur ordre',
   });
 
   final List<ReorderItem> items;
 
-  /// L'exercice de la place [from] va à la place [to] (dans la liste finale).
+  /// L'élément de la place [from] va à la place [to] (dans la liste finale).
   final void Function(int from, int to) onMove;
 
   final VoidCallback onDone;
+
+  /// Consigne affichée au-dessus de la liste.
+  final String hint;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +41,7 @@ class ExerciseReorderList extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Glisse les exercices pour changer leur ordre',
+                    hint,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSecondaryContainer,
                     ),

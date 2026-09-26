@@ -27,4 +27,12 @@ class FakeRestNotifications implements RestNotifications {
 
   @override
   Future<void> cancelRestEnd() async => cancellations++;
+
+  void Function()? _onTap;
+
+  @override
+  Future<void> listenToTaps(void Function() onTap) async => _onTap = onTap;
+
+  /// Simule un toucher sur la notification de fin de repos.
+  void tap() => _onTap?.call();
 }

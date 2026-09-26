@@ -67,6 +67,17 @@ void main() {
       expect(list.map((t) => t.template.name), ['A', 'B']);
     });
 
+    test('réordonner les modèles (TP-08)', () async {
+      final a = await templates.saveTemplate(push()..name = 'A');
+      final b = await templates.saveTemplate(push()..name = 'B');
+      final c = await templates.saveTemplate(push()..name = 'C');
+
+      await templates.reorderTemplates([c, a, b]);
+
+      final list = await templates.watchTemplates().first;
+      expect(list.map((t) => t.template.name), ['C', 'A', 'B']);
+    });
+
     test('modifier remplace le nom et tout le contenu', () async {
       final id = await templates.saveTemplate(push());
 

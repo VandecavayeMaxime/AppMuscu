@@ -8,13 +8,13 @@ import '../../../core/utils/input_parsing.dart';
 import '../../../core/utils/weight_format.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/reorder_list.dart';
 import '../../exercises/data/exercise_repository.dart';
 import '../../exercises/presentation/exercise_note.dart';
 import '../../exercises/presentation/exercise_providers.dart';
 import '../../rest_timer/domain/rest_timer.dart';
 import '../../rest_timer/presentation/rest_line.dart';
 import '../../settings/data/settings_repository.dart';
-import '../../workout/presentation/exercise_reorder_list.dart';
 import '../../workout/presentation/set_row.dart';
 import '../data/template_repository.dart';
 
@@ -139,7 +139,7 @@ class _TemplateEditorScreenState extends ConsumerState<TemplateEditorScreen> {
                     )
                   : const Center(child: CircularProgressIndicator())
             : _reordering
-            ? ExerciseReorderList(
+            ? ReorderList(
                 items: [
                   for (final item in draft.exercises)
                     (key: ObjectKey(item), name: item.exercise.name),
@@ -361,6 +361,7 @@ class _DraftExerciseSection extends ConsumerWidget {
                 _DraftRestLine(
                   set: set,
                   item: item,
+                  exercise: exercise,
                   globalRest: globalRest,
                   onEdit: onEdit,
                 ),
@@ -464,22 +465,26 @@ class _DraftSetRowState extends State<_DraftSetRow> {
 }
 
 /// Temps de repos prévu après une série ; le toucher permet de le changer.
-class _DraftRestLine extends StatelessWidget {
+class _DraftRestLine extends ConsumerWidget {
   const _DraftRestLine({
     required this.set,
     required this.item,
+    required this.exercise,
     required this.globalRest,
     required this.onEdit,
   });
 
   final DraftSet set;
   final DraftExercise item;
+
+  /// L'exercice tel qu'en base (son temps de repos par défaut peut changer).
+  final Exercise exercise;
   final int globalRest;
   final void Function(VoidCallback change) onEdit;
 
   @override
-  Widget build(BuildContext context) {
-    final exerciseRest = item.exercise.defaultRestSeconds;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final exerciseRest = exercise.defaultRestSeconds;
     final seconds = effectiveRestSeconds(
       setRest: set.restSeconds,
       exerciseRest: exerciseRest,
@@ -501,6 +506,8 @@ class _DraftRestLine extends StatelessWidget {
             set.restSeconds = choice.seconds;
           }
         });
+        // Le défaut appartient à l'exercice : enregistré tout de suite.
+        await saveRestAsDefault(ref, exercise, choice);
       },
       child: Container(
         height: 32,

@@ -12,7 +12,7 @@
 | Framework | **Flutter** 3.47 (canal stable), Dart 3.13 | Choix du projet. Android uniquement pour l'instant ; la même base de code pourra viser iOS plus tard. |
 | Composants UI | **material_ui** | Material Design, sorti du framework Flutter (depuis 3.44) pour devenir un paquet à part. go_router 18 l'utilise déjà. On importe `package:material_ui/material_ui.dart` et **jamais** `package:flutter/material.dart` : les deux définissent des types différents, et les mélanger casse le thème. Les traductions françaises (`GlobalMaterialLocalizations`) sont incluses. |
 | État / injection | **Riverpod 3** (`flutter_riverpod`), **sans** générateur de code | Standard de fait, testable, s'accorde bien avec les flux réactifs de la base. Sans générateur, il y a moins de « magie » à comprendre. |
-| Base locale | **Drift** (SQLite) + `sqlite3_flutter_libs` | Données relationnelles (séance → exercices → séries), requêtes typées, flux réactifs (`watch`), migrations versionnées. SQLite simplifie la future sync. |
+| Base locale | **Drift** 2.35 (SQLite) + `drift_flutter` | Données relationnelles (séance → exercices → séries), requêtes typées, flux réactifs (`watch`), migrations versionnées. SQLite simplifie la future sync. SQLite lui-même est fourni par `sqlite3` 3.x, téléchargé automatiquement à la compilation (*build hooks*) pour Android et pour les tests sur PC. L'ancien paquet `sqlite3_flutter_libs` est abandonné. |
 | Navigation | **go_router** | Package officiel. Tous les écrans sont déclarés à un seul endroit, avec une adresse. `StatefulShellRoute` donne à chaque onglet sa propre pile d'écrans. Ouvrir la séance depuis la notification se fait par une simple adresse. Et c'est prêt pour les redirections de connexion en v2. |
 | Notifications | `flutter_local_notifications` + `timezone` | Notification programmée à la fin du repos (RT-05). |
 | Vibration | `HapticFeedback` (SDK Flutter), `vibration` si besoin de motifs | RT-05 |
@@ -39,7 +39,7 @@ lib/
 ├── main.dart
 ├── app/                    # app.dart (MaterialApp), theme.dart, router.dart (go_router), home_shell.dart (onglets)
 ├── core/
-│   ├── database/           # AppDatabase (Drift), tables, migrations, seed
+│   ├── database/           # tables.dart, app_database.dart (+ .g.dart généré), seed/built_in_exercises.dart
 │   ├── utils/              # formatage poids/durée, normalisation texte
 │   └── widgets/            # composants réutilisables (ex. EmptyState)
 └── features/
@@ -49,9 +49,7 @@ lib/
     ├── rest_timer/         # minuteur + notifications (RT)
     ├── templates/          # modèles (TP)
     └── settings/           # réglages (ST)
-assets/
-└── seed/exercises_fr.json  # bibliothèque initiale (EX-01)
-test/                       # même arborescence que lib/
+test/                       # même arborescence que lib/ (+ helpers/ : base de test en mémoire)
 ```
 
 **Règles d'architecture**
@@ -98,9 +96,9 @@ erDiagram
 **Conventions**
 
 - `id` : UUID v4 en `TEXT`, clé primaire.
-- Horodatages en `INTEGER` (epoch millisecondes, UTC) : `created_at` et `updated_at` sur toutes les tables racines.
+- Horodatages en `INTEGER` (secondes Unix, format par défaut de Drift pour les `DateTime`) : `created_at` et `updated_at` sur toutes les tables racines.
 - **Agrégats** : `exercises`, `templates` et `workouts` sont des racines. Elles portent `deleted_at` (suppression douce, RG-10). Leurs enfants (exercices et séries d'un modèle ou d'une séance) sont supprimés physiquement lors d'une édition. **Toute modification d'un enfant met à jour `updated_at` de la racine** : la sync v2 se fera agrégat par agrégat.
-- Les énumérations sont stockées en `TEXT` (`'barbell'`, `'warmup'`…) : c'est lisible et ça ne casse pas si on réordonne les valeurs.
+- Les énumérations sont des `enum` Dart stockées en `TEXT` sous leur nom Dart (`textEnum`, par exemple `'barbell'`, `'fullBody'`, `'weightReps'`). C'est lisible et ça ne casse pas si on réordonne les valeurs, mais il ne faut **jamais renommer** une valeur existante.
 
 ### Tables
 
@@ -112,8 +110,8 @@ erDiagram
 | name | TEXT | |
 | name_normalized | TEXT | minuscules, sans accents, pour la recherche (EX-02) et l'unicité (EX-06) |
 | equipment | TEXT | `barbell`, `dumbbell`, `machine`, `cable`, `kettlebell`, `bodyweight`, `band`, `other` |
-| body_part | TEXT | `chest`, `back`, `shoulders`, `biceps`, `triceps`, `forearms`, `abs`, `quads`, `hamstrings`, `glutes`, `calves`, `full_body`, `cardio`, `other` |
-| tracking_type | TEXT | `weight_reps`, `reps`, `duration` |
+| body_part | TEXT | `chest`, `back`, `shoulders`, `biceps`, `triceps`, `forearms`, `abs`, `quads`, `hamstrings`, `glutes`, `calves`, `fullBody`, `cardio`, `other` |
+| tracking_type | TEXT | `weightReps`, `reps`, `duration` |
 | default_rest_seconds | INTEGER NULL | NULL → réglage global |
 | notes | TEXT NULL | |
 | is_custom | BOOLEAN | intégré ou créé par l'utilisateur |
@@ -159,6 +157,7 @@ erDiagram
 ### Index et contraintes
 
 - Index sur `workout_exercises(exercise_id)`, `workout_exercises(workout_id)`, `workout_sets(workout_exercise_id)`, `workouts(started_at)`.
+- **Index unique partiel** sur `exercises(name_normalized) WHERE deleted_at IS NULL` : deux exercices actifs ne peuvent pas porter le même nom (EX-06), même si le code applicatif oubliait de le vérifier.
 - **Index unique partiel** garantissant une seule séance en cours (WO-02). Il a été testé avec SQLite 3.45 : une 2e séance en cours est bien refusée.
   `CREATE UNIQUE INDEX one_active_workout ON workouts((1)) WHERE ended_at IS NULL AND deleted_at IS NULL;`
 - Clés étrangères `ON DELETE CASCADE` des enfants vers leurs parents.
@@ -201,11 +200,11 @@ ORDER BY position;
 - ⚠️ **Android** : permission `POST_NOTIFICATIONS` (Android 13+). Pour une notification à la seconde près, il faut les **alarmes exactes** (`SCHEDULE_EXACT_ALARM`), refusées par défaut à partir d'Android 14 : on renverra l'utilisateur vers le réglage système. Plan B si ce n'est pas assez fiable : un *foreground service* avec une notification de compte à rebours.
 
 ### Bibliothèque initiale (EX-01)
-- `assets/seed/exercises_fr.json` contient les 10 exercices de [SPEC §5.1](SPEC.md#51-bibliothèque-dexercices-ex). Il est chargé au premier lancement, pendant la création de la base. Chaque exercice a un **UUID fixe** écrit dans le fichier, ce qui permet aux versions suivantes d'ajouter ou corriger des exercices intégrés sans créer de doublons.
+- `lib/core/database/seed/built_in_exercises.dart` contient les 10 exercices de [SPEC §5.1](SPEC.md#51-bibliothèque-dexercices-ex), insérés au premier lancement (`onCreate`). On a choisi un fichier Dart plutôt que JSON : les valeurs d'enum sont vérifiées à la compilation, et il n'y a aucun fichier à charger. Chaque exercice a un **UUID fixe**, ce qui permet aux versions suivantes d'ajouter ou corriger des exercices intégrés, par une migration, sans créer de doublons.
 
 ### Sauvegarde
 - Pas d'export dans le MVP. La **sauvegarde automatique d'Android** (Auto Backup, activée par défaut) copie les données de l'app sur le compte Google du téléphone : jusqu'à 25 Mo, environ une fois par jour, en Wi-Fi et en charge. Elle les restaure si l'app est réinstallée ou si on change de téléphone.
-- À vérifier au jalon M1 : que le fichier de la base est bien inclus dans cette sauvegarde.
+- ✅ Vérifié au M1 : `drift_flutter` range `appmuscu.sqlite` dans `getApplicationDocumentsDirectory()`, c'est-à-dire `/data/data/com.maxime.app_muscu/app_flutter/` sur Android (un dossier créé par `Context.getDir`). Auto Backup l'inclut par défaut, et le manifeste ne désactive pas `allowBackup`.
 
 ## 5. Stratégie de test
 
@@ -233,7 +232,7 @@ Chaque jalon se termine par quelque chose de **testable sur le téléphone**. À
 | Jalon | Contenu | Exigences | Concepts Flutter / Dart découverts | Résultat testable |
 |---|---|---|---|---|
 | **M0 — Setup** ✅ | Installation, `flutter create`, lints, arborescence, thème clair/sombre, 3 onglets vides avec go_router, git | — | Bases de Dart, widgets, `StatelessWidget` / `StatefulWidget`, *hot reload*, `Scaffold`, `NavigationBar`, routes go_router et `StatefulShellRoute` | L'app démarre sur le téléphone avec 3 onglets |
-| **M1 — Données** | Schéma Drift, index, seed des 10 exercices, repositories, tests unitaires | NF-07, NF-08, RG-* | Classes Dart, `async` / `Future` / `Stream`, SQL avec Drift, génération de code, tests unitaires | Tests verts |
+| **M1 — Données** ✅ | Schéma Drift, index, seed des 10 exercices, repositories, tests unitaires | NF-07, NF-08, RG-* | Classes Dart, `async` / `Future` / `Stream`, SQL avec Drift, génération de code, tests unitaires | Tests verts |
 | **M2 — Exercices** | Liste, recherche, filtres, création / édition / archivage | EX-01 → EX-06 | `ListView`, formulaires et validation, routes avec paramètres (`/exercices/:id`), Riverpod (providers) | Parcourir, chercher et créer des exercices |
 | **M3 — Séance** | Séance vide, séries, Précédent, validation, fin, résumé, reprise après arrêt | WO-01 → WO-21 (M/S) | État complexe, flux de la base dans l'UI (`StreamProvider`), `TextEditingController`, gestes (balayage, glisser-déposer), dialogues | 🏋️ **Première vraie séance à la salle** |
 | **M4 — Minuteur** | Ligne de repos sous chaque série, temps de repos par série, notifications, vibration, compteur compact | RT-01 → RT-08 | `Timer`, cycle de vie de l'app (premier / arrière-plan), permissions Android, notifications locales, lien profond vers `/seance-en-cours` | Repos notifié téléphone verrouillé |

@@ -12,16 +12,22 @@ environment:
 
 # Paquets utilisés par l'app (trouvés sur https://pub.dev)
 dependencies:
+  clock: ^1.1.3
+  drift: ^2.35.0
+  drift_flutter: ^0.3.1
   flutter:
     sdk: flutter
   go_router: ^18.0.1      # navigation entre écrans (docs/ARCHITECTURE.md §2)
   material_ui: ^1.4.0     # composants Material Design (sorti du framework Flutter depuis 3.44)
+  uuid: ^4.6.0
 
 # Paquets utilisés seulement pendant le développement (tests, analyse du code)
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0   # règles de bonnes pratiques, activées dans analysis_options.yaml
+  drift_dev: ^2.35.0
+  build_runner: ^2.16.1
 
 flutter:
   uses-material-design: true  # embarque la police des icônes Material (Icons.xxx)

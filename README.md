@@ -16,3 +16,4 @@ Application Android de suivi de musculation inspirée de Strong. Projet perso et
 | `flutter test` | Lance les tests |
 | `flutter analyze` | Vérifie le code (erreurs, bonnes pratiques) |
 | `flutter pub get` | Télécharge les dépendances du `pubspec.yaml` |
+| `dart run build_runner build` | Régénère le code Drift (`*.g.dart`) après une modification de `lib/core/database/tables.dart` |

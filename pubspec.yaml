@@ -1,0 +1,27 @@
+# Carte d'identité du projet : nom, version, dépendances.
+# Après chaque modification des dépendances : `flutter pub get` (VS Code le fait tout seul à l'enregistrement).
+name: app_muscu
+description: "Suivi de musculation inspiré de Strong"
+publish_to: 'none' # Projet privé : ne jamais publier sur pub.dev
+
+# version (visible par l'utilisateur) + numéro de build (versionCode Android, à incrémenter à chaque APK)
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.4
+
+# Paquets utilisés par l'app (trouvés sur https://pub.dev)
+dependencies:
+  flutter:
+    sdk: flutter
+  go_router: ^18.0.1      # navigation entre écrans (docs/ARCHITECTURE.md §2)
+  material_ui: ^1.4.0     # composants Material Design (sorti du framework Flutter depuis 3.44)
+
+# Paquets utilisés seulement pendant le développement (tests, analyse du code)
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0   # règles de bonnes pratiques, activées dans analysis_options.yaml
+
+flutter:
+  uses-material-design: true  # embarque la police des icônes Material (Icons.xxx)

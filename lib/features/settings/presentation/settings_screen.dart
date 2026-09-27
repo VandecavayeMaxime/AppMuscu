@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/utils/duration_format.dart';
+import '../../../core/widgets/section_title.dart';
 import '../../rest_timer/presentation/rest_line.dart';
 import '../data/settings_repository.dart';
 import '../domain/app_theme.dart';
@@ -26,7 +27,7 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Réglages')),
       body: ListView(
         children: [
-          const _SectionTitle('Minuteur de repos'),
+          const SectionTitle('Minuteur de repos'),
           ListTile(
             title: const Text('Temps de repos par défaut'),
             subtitle: const Text(
@@ -58,14 +59,14 @@ class SettingsScreen extends ConsumerWidget {
             value: vibration,
             onChanged: repository.setRestVibration,
           ),
-          const _SectionTitle('Séance'),
+          const SectionTitle('Séance'),
           SwitchListTile(
             title: const Text("Garder l'écran allumé"),
             subtitle: const Text("Tant qu'une séance est en cours"),
             value: keepScreenOn,
             onChanged: repository.setKeepScreenOn,
           ),
-          const _SectionTitle('Apparence'),
+          const SectionTitle('Apparence'),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: SegmentedButton<AppTheme>(
@@ -79,26 +80,6 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 4),
-      child: Text(
-        title,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.primary,
-        ),
       ),
     );
   }

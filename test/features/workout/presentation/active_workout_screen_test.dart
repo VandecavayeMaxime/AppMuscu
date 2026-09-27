@@ -59,10 +59,10 @@ void main() {
     expect(find.text('Terminer'), findsOneWidget);
     expect(find.text('Séance libre'), findsOneWidget); // nom du modèle
 
-    await addExercises(tester, ['Squat (barre)', 'Tractions']);
+    await addExercises(tester, ['Squat (Barbell)', 'Pull-Up']);
 
-    expect(find.text('Squat (barre)'), findsOneWidget);
-    expect(find.text('Tractions'), findsOneWidget);
+    expect(find.text('Squat (Barbell)'), findsOneWidget);
+    expect(find.text('Pull-Up'), findsOneWidget);
     expect(find.text('kg'), findsOneWidget); // colonnes du squat
     expect(find.text('Reps'), findsNWidgets(2)); // squat + tractions
     expect(find.byTooltip('Valider la série'), findsNWidgets(2));
@@ -72,7 +72,7 @@ void main() {
     tester,
   ) async {
     await startWorkout(tester);
-    await addExercises(tester, ['Squat (barre)']);
+    await addExercises(tester, ['Squat (Barbell)']);
 
     await tester.enterText(field(0), '100');
     await tester.enterText(field(1), '5');
@@ -91,7 +91,7 @@ void main() {
     tester,
   ) async {
     await startWorkout(tester);
-    await addExercises(tester, ['Squat (barre)']);
+    await addExercises(tester, ['Squat (Barbell)']);
 
     await validateSet(tester);
 
@@ -108,7 +108,7 @@ void main() {
     ),
     (tester) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Développé couché (barre)']);
+      await addExercises(tester, ['Bench Press (Barbell)']);
 
       expect(find.text('80 × 8'), findsOneWidget);
 
@@ -134,7 +134,7 @@ void main() {
     ),
     (tester) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Développé couché (barre)']);
+      await addExercises(tester, ['Bench Press (Barbell)']);
 
       await tester.tap(find.text('77,5 × 6'));
       await tester.pumpAndSettle();
@@ -148,7 +148,7 @@ void main() {
     tester,
   ) async {
     await startWorkout(tester);
-    await addExercises(tester, ['Squat (barre)']);
+    await addExercises(tester, ['Squat (Barbell)']);
     await tester.enterText(field(0), '100');
     await tester.enterText(field(1), '5');
     await validateSet(tester);
@@ -167,8 +167,7 @@ void main() {
 
     await tester.tap(tab('Exercices'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Squat (barre)'));
-    await tester.pumpAndSettle();
+    await tapExercise(tester, 'Squat (Barbell)');
     await tester.tap(find.text('Historique'));
     await tester.pumpAndSettle();
 
@@ -189,7 +188,7 @@ void main() {
     /// validée.
     Future<void> oneValidatedOneReady(WidgetTester tester) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Squat (barre)']);
+      await addExercises(tester, ['Squat (Barbell)']);
       await tester.enterText(field(0), '100');
       await tester.enterText(field(1), '5');
       await validateSet(tester);
@@ -210,7 +209,7 @@ void main() {
       tester,
     ) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Squat (barre)']);
+      await addExercises(tester, ['Squat (Barbell)']);
 
       await tapFinish(tester);
       expect(find.text('Aucune série validée'), findsOneWidget);
@@ -254,7 +253,7 @@ void main() {
     testWorkout('sans série validée mais avec des séries remplies : pas de '
         '« Jeter »', (tester) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Squat (barre)']);
+      await addExercises(tester, ['Squat (Barbell)']);
       await tester.enterText(field(0), '100');
       await tester.enterText(field(1), '5');
       await tester.pump();
@@ -275,7 +274,7 @@ void main() {
       expect(stat('Séries', '2'), findsOneWidget);
       // Volume : 100 × 5 + 100 × 4 = 900 kg
       expect(stat('Volume', '900 kg'), findsOneWidget);
-      expect(find.text('Squat (barre)'), findsOneWidget);
+      expect(find.text('Squat (Barbell)'), findsOneWidget);
       expect(find.text('100 kg × 5'), findsOneWidget);
       expect(find.text('100 kg × 4'), findsOneWidget);
       expect(find.textContaining(' → '), findsOneWidget); // horaires
@@ -313,7 +312,7 @@ void main() {
   group('séries et exercices (WO-11 à WO-13, WO-01)', () {
     Future<void> squatWithTwoSets(WidgetTester tester) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Squat (barre)']);
+      await addExercises(tester, ['Squat (Barbell)']);
       await tester.tap(find.text('Ajouter une série'));
       await tester.pumpAndSettle();
     }
@@ -335,7 +334,7 @@ void main() {
       tester,
     ) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Squat (barre)', 'Tractions']);
+      await addExercises(tester, ['Squat (Barbell)', 'Pull-Up']);
 
       await tester.tap(find.byTooltip("Options de l'exercice").first);
       await tester.pumpAndSettle();
@@ -354,7 +353,7 @@ void main() {
 
       // La note est attachée à l'exercice : on la retrouve dans sa fiche,
       // ouverte depuis la séance comme depuis l'onglet Exercices (EX-11).
-      await tester.tap(find.text('Squat (barre)'));
+      await tester.tap(find.text('Squat (Barbell)'));
       await tester.pumpAndSettle();
       expect(find.text('Pieds un peu plus écartés'), findsOneWidget);
       await tester.tap(find.byType(BackButton));
@@ -367,8 +366,8 @@ void main() {
       await tester.tap(inDialog('Retirer'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Squat (barre)'), findsNothing);
-      expect(find.text('Tractions'), findsOneWidget);
+      expect(find.text('Squat (Barbell)'), findsNothing);
+      expect(find.text('Pull-Up'), findsOneWidget);
     });
 
     testWorkout('toucher le nom de la séance permet de la renommer', (
@@ -394,7 +393,7 @@ void main() {
 
   testWorkout('annuler la séance la supprime', (tester) async {
     await startWorkout(tester);
-    await addExercises(tester, ['Squat (barre)']);
+    await addExercises(tester, ['Squat (Barbell)']);
 
     await tester.tap(find.text('Annuler la séance'));
     await tester.pumpAndSettle();
@@ -409,7 +408,7 @@ void main() {
     testWorkout('une barre au-dessus des onglets, dans chaque onglet, '
         'rouvre la séance', (tester) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Squat (barre)']);
+      await addExercises(tester, ['Squat (Barbell)']);
 
       await tester.tap(find.byTooltip('Réduire'));
       await tester.pumpAndSettle();
@@ -422,14 +421,14 @@ void main() {
       await tester.tap(find.byTooltip('Reprendre la séance'));
       await tester.pumpAndSettle();
       expect(find.text('Terminer'), findsOneWidget);
-      expect(find.text('Squat (barre)'), findsOneWidget);
+      expect(find.text('Squat (Barbell)'), findsOneWidget);
     });
 
     testWorkout('pendant un repos, la barre affiche le compteur', (
       tester,
     ) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Squat (barre)']);
+      await addExercises(tester, ['Squat (Barbell)']);
       await tester.enterText(field(0), '100');
       await tester.enterText(field(1), '5');
       await validateSet(tester);
@@ -450,9 +449,9 @@ void main() {
         'qui y ramène', (tester) async {
       await startWorkout(tester);
       await addExercises(tester, [
-        'Squat (barre)',
-        'Développé couché (barre)',
-        'Tractions',
+        'Squat (Barbell)',
+        'Bench Press (Barbell)',
+        'Pull-Up',
       ]);
       // Écran plus petit (360 × 500 dp) : la séance ne tient plus en entier.
       tester.view.physicalSize = const Size(1080, 1500);
@@ -487,13 +486,13 @@ void main() {
     ),
     (tester) async {
       await startWorkout(tester);
-      await addExercises(tester, ['Développé couché (barre)']);
+      await addExercises(tester, ['Bench Press (Barbell)']);
 
-      await tester.tap(find.text('Développé couché (barre)'));
+      await tester.tap(find.text('Bench Press (Barbell)'));
       await tester.pumpAndSettle();
 
       expect(
-        find.widgetWithText(AppBar, 'Développé couché (barre)'),
+        find.widgetWithText(AppBar, 'Bench Press (Barbell)'),
         findsOneWidget,
       );
       expect(find.byTooltip("Plus d'options"), findsNothing);
@@ -514,11 +513,10 @@ void main() {
     await startWorkout(tester);
     await tester.tap(find.text('Ajouter des exercices'));
     await tester.pumpAndSettle();
-    await checkExercise(tester, 'Tractions');
+    await checkExercise(tester, 'Pull-Up');
 
-    await tester.tap(find.text('Squat (barre)'));
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Squat (barre)'), findsOneWidget);
+    await tapExercise(tester, 'Squat (Barbell)');
+    expect(find.widgetWithText(AppBar, 'Squat (Barbell)'), findsOneWidget);
     expect(find.text('À propos'), findsOneWidget);
 
     await tester.tap(find.byType(BackButton));
@@ -527,8 +525,8 @@ void main() {
 
     await tester.tap(find.text('Ajouter (1)'));
     await tester.pumpAndSettle();
-    expect(find.text('Tractions'), findsOneWidget);
-    expect(find.text('Squat (barre)'), findsNothing);
+    expect(find.text('Pull-Up'), findsOneWidget);
+    expect(find.text('Squat (Barbell)'), findsNothing);
   });
 
   testWorkout('le sélecteur est l’onglet Exercices : mêmes filtres, et un '
@@ -544,15 +542,15 @@ void main() {
     await tester.tap(find.text('Ajouter des exercices'));
     await tester.pumpAndSettle();
 
-    await choose('Groupe musculaire', 'Dos');
-    expect(find.text('Squat (barre)'), findsNothing);
-    expect(find.text('Tractions'), findsOneWidget);
+    await choose('Groupe musculaire', 'Dorsaux');
+    expect(find.text('Squat (Barbell)'), findsNothing);
+    expect(find.text('Pull-Up'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Nouvel exercice'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Nom'),
-      'Hip thrust',
+      'Exercice test',
     );
     await choose('Groupe musculaire', 'Fessiers');
     await choose('Catégorie', 'Barre');
@@ -562,14 +560,14 @@ void main() {
     expect(find.text('Ajouter (1)'), findsOneWidget);
     await tester.tap(find.text('Ajouter (1)'));
     await tester.pumpAndSettle();
-    expect(find.text('Hip thrust'), findsOneWidget);
+    expect(find.text('Exercice test'), findsOneWidget);
   });
 
   testWorkout('exercice « reps seules » : une seule colonne de saisie', (
     tester,
   ) async {
     await startWorkout(tester);
-    await addExercises(tester, ['Tractions']);
+    await addExercises(tester, ['Pull-Up']);
 
     expect(find.byType(TextField), findsOneWidget);
 
@@ -582,9 +580,9 @@ void main() {
   testWorkout('appui long sur un exercice : le faire glisser pour changer '
       'l’ordre (WO-15)', (tester) async {
     await startWorkout(tester);
-    await addExercises(tester, ['Squat (barre)', 'Tractions']);
+    await addExercises(tester, ['Squat (Barbell)', 'Pull-Up']);
 
-    await tester.longPress(find.text('Tractions'));
+    await tester.longPress(find.text('Pull-Up'));
     await tester.pumpAndSettle();
     expect(
       find.text('Glisse les exercices pour changer leur ordre'),
@@ -592,13 +590,13 @@ void main() {
     );
     expect(find.byType(TextField), findsNothing); // séries masquées
 
-    await dragUp(tester, 'Tractions');
+    await dragUp(tester, 'Pull-Up');
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
     expect(
-      tester.getTopLeft(find.text('Tractions')).dy,
-      lessThan(tester.getTopLeft(find.text('Squat (barre)')).dy),
+      tester.getTopLeft(find.text('Pull-Up')).dy,
+      lessThan(tester.getTopLeft(find.text('Squat (Barbell)')).dy),
     );
     expect(find.byType(TextField), findsNWidgets(3)); // séries revenues
   });

@@ -145,6 +145,16 @@ class $ExercisesTable extends Exercises
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<List<BodyPart>, String>
+  secondaryMuscles = GeneratedColumn<String>(
+    'secondary_muscles',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  ).withConverter<List<BodyPart>>($ExercisesTable.$convertersecondaryMuscles);
   static const VerificationMeta _isCustomMeta = const VerificationMeta(
     'isCustom',
   );
@@ -175,6 +185,7 @@ class $ExercisesTable extends Exercises
     weightUnit,
     instructions,
     note,
+    secondaryMuscles,
     isCustom,
   ];
   @override
@@ -328,6 +339,12 @@ class $ExercisesTable extends Exercises
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      secondaryMuscles: $ExercisesTable.$convertersecondaryMuscles.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}secondary_muscles'],
+        )!,
+      ),
       isCustom: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_custom'],
@@ -350,6 +367,8 @@ class $ExercisesTable extends Exercises
   );
   static JsonTypeConverter2<WeightUnit, String, String> $converterweightUnit =
       const EnumNameConverter<WeightUnit>(WeightUnit.values);
+  static TypeConverter<List<BodyPart>, String> $convertersecondaryMuscles =
+      const BodyPartListConverter();
 }
 
 class Exercise extends DataClass implements Insertable<Exercise> {
@@ -380,6 +399,10 @@ class Exercise extends DataClass implements Insertable<Exercise> {
   /// qu'on la saisisse : fiche, séance, modèle (EX-11). *Ajoutée en v4.*
   final String? note;
 
+  /// Muscles travaillés en plus du groupe musculaire principal (EX-04, EX-09,
+  /// RG-17). *Ajoutée en v5.*
+  final List<BodyPart> secondaryMuscles;
+
   /// `false` pour les exercices livrés avec l'app.
   final bool isCustom;
   const Exercise({
@@ -396,6 +419,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     required this.weightUnit,
     this.instructions,
     this.note,
+    required this.secondaryMuscles,
     required this.isCustom,
   });
   @override
@@ -438,6 +462,11 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    {
+      map['secondary_muscles'] = Variable<String>(
+        $ExercisesTable.$convertersecondaryMuscles.toSql(secondaryMuscles),
+      );
+    }
     map['is_custom'] = Variable<bool>(isCustom);
     return map;
   }
@@ -463,6 +492,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           ? const Value.absent()
           : Value(instructions),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      secondaryMuscles: Value(secondaryMuscles),
       isCustom: Value(isCustom),
     );
   }
@@ -494,6 +524,9 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       ),
       instructions: serializer.fromJson<String?>(json['instructions']),
       note: serializer.fromJson<String?>(json['note']),
+      secondaryMuscles: serializer.fromJson<List<BodyPart>>(
+        json['secondaryMuscles'],
+      ),
       isCustom: serializer.fromJson<bool>(json['isCustom']),
     );
   }
@@ -522,6 +555,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       ),
       'instructions': serializer.toJson<String?>(instructions),
       'note': serializer.toJson<String?>(note),
+      'secondaryMuscles': serializer.toJson<List<BodyPart>>(secondaryMuscles),
       'isCustom': serializer.toJson<bool>(isCustom),
     };
   }
@@ -540,6 +574,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     WeightUnit? weightUnit,
     Value<String?> instructions = const Value.absent(),
     Value<String?> note = const Value.absent(),
+    List<BodyPart>? secondaryMuscles,
     bool? isCustom,
   }) => Exercise(
     id: id ?? this.id,
@@ -557,6 +592,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     weightUnit: weightUnit ?? this.weightUnit,
     instructions: instructions.present ? instructions.value : this.instructions,
     note: note.present ? note.value : this.note,
+    secondaryMuscles: secondaryMuscles ?? this.secondaryMuscles,
     isCustom: isCustom ?? this.isCustom,
   );
   Exercise copyWithCompanion(ExercisesCompanion data) {
@@ -584,6 +620,9 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           ? data.instructions.value
           : this.instructions,
       note: data.note.present ? data.note.value : this.note,
+      secondaryMuscles: data.secondaryMuscles.present
+          ? data.secondaryMuscles.value
+          : this.secondaryMuscles,
       isCustom: data.isCustom.present ? data.isCustom.value : this.isCustom,
     );
   }
@@ -604,6 +643,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           ..write('weightUnit: $weightUnit, ')
           ..write('instructions: $instructions, ')
           ..write('note: $note, ')
+          ..write('secondaryMuscles: $secondaryMuscles, ')
           ..write('isCustom: $isCustom')
           ..write(')'))
         .toString();
@@ -624,6 +664,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     weightUnit,
     instructions,
     note,
+    secondaryMuscles,
     isCustom,
   );
   @override
@@ -643,6 +684,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           other.weightUnit == this.weightUnit &&
           other.instructions == this.instructions &&
           other.note == this.note &&
+          other.secondaryMuscles == this.secondaryMuscles &&
           other.isCustom == this.isCustom);
 }
 
@@ -660,6 +702,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
   final Value<WeightUnit> weightUnit;
   final Value<String?> instructions;
   final Value<String?> note;
+  final Value<List<BodyPart>> secondaryMuscles;
   final Value<bool> isCustom;
   final Value<int> rowid;
   const ExercisesCompanion({
@@ -676,6 +719,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     this.weightUnit = const Value.absent(),
     this.instructions = const Value.absent(),
     this.note = const Value.absent(),
+    this.secondaryMuscles = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -693,6 +737,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     this.weightUnit = const Value.absent(),
     this.instructions = const Value.absent(),
     this.note = const Value.absent(),
+    this.secondaryMuscles = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : name = Value(name),
@@ -714,6 +759,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Expression<String>? weightUnit,
     Expression<String>? instructions,
     Expression<String>? note,
+    Expression<String>? secondaryMuscles,
     Expression<bool>? isCustom,
     Expression<int>? rowid,
   }) {
@@ -732,6 +778,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
       if (weightUnit != null) 'weight_unit': weightUnit,
       if (instructions != null) 'instructions': instructions,
       if (note != null) 'note': note,
+      if (secondaryMuscles != null) 'secondary_muscles': secondaryMuscles,
       if (isCustom != null) 'is_custom': isCustom,
       if (rowid != null) 'rowid': rowid,
     });
@@ -751,6 +798,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Value<WeightUnit>? weightUnit,
     Value<String?>? instructions,
     Value<String?>? note,
+    Value<List<BodyPart>>? secondaryMuscles,
     Value<bool>? isCustom,
     Value<int>? rowid,
   }) {
@@ -768,6 +816,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
       weightUnit: weightUnit ?? this.weightUnit,
       instructions: instructions ?? this.instructions,
       note: note ?? this.note,
+      secondaryMuscles: secondaryMuscles ?? this.secondaryMuscles,
       isCustom: isCustom ?? this.isCustom,
       rowid: rowid ?? this.rowid,
     );
@@ -823,6 +872,13 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (secondaryMuscles.present) {
+      map['secondary_muscles'] = Variable<String>(
+        $ExercisesTable.$convertersecondaryMuscles.toSql(
+          secondaryMuscles.value,
+        ),
+      );
+    }
     if (isCustom.present) {
       map['is_custom'] = Variable<bool>(isCustom.value);
     }
@@ -848,6 +904,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
           ..write('weightUnit: $weightUnit, ')
           ..write('instructions: $instructions, ')
           ..write('note: $note, ')
+          ..write('secondaryMuscles: $secondaryMuscles, ')
           ..write('isCustom: $isCustom, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4230,6 +4287,7 @@ typedef $$ExercisesTableCreateCompanionBuilder = ExercisesCompanion Function({
   Value<WeightUnit> weightUnit,
   Value<String?> instructions,
   Value<String?> note,
+  Value<List<BodyPart>> secondaryMuscles,
   Value<bool> isCustom,
   Value<int> rowid,
 });
@@ -4247,6 +4305,7 @@ typedef $$ExercisesTableUpdateCompanionBuilder = ExercisesCompanion Function({
   Value<WeightUnit> weightUnit,
   Value<String?> instructions,
   Value<String?> note,
+  Value<List<BodyPart>> secondaryMuscles,
   Value<bool> isCustom,
   Value<int> rowid,
 });
@@ -4373,6 +4432,12 @@ class $$ExercisesTableFilterComposer
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<BodyPart>, List<BodyPart>, String>
+  get secondaryMuscles => $composableBuilder(
+    column: $table.secondaryMuscles,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<bool> get isCustom => $composableBuilder(
@@ -4505,6 +4570,11 @@ class $$ExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get secondaryMuscles => $composableBuilder(
+    column: $table.secondaryMuscles,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isCustom => $composableBuilder(
     column: $table.isCustom,
     builder: (column) => ColumnOrderings(column),
@@ -4570,6 +4640,12 @@ class $$ExercisesTableAnnotationComposer
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<BodyPart>, String>
+  get secondaryMuscles => $composableBuilder(
+    column: $table.secondaryMuscles,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get isCustom =>
       $composableBuilder(column: $table.isCustom, builder: (column) => column);
@@ -4670,6 +4746,7 @@ class $$ExercisesTableTableManager
                 Value<WeightUnit> weightUnit = const Value.absent(),
                 Value<String?> instructions = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<List<BodyPart>> secondaryMuscles = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExercisesCompanion(
@@ -4686,6 +4763,7 @@ class $$ExercisesTableTableManager
                 weightUnit: weightUnit,
                 instructions: instructions,
                 note: note,
+                secondaryMuscles: secondaryMuscles,
                 isCustom: isCustom,
                 rowid: rowid,
               ),
@@ -4704,6 +4782,7 @@ class $$ExercisesTableTableManager
                 Value<WeightUnit> weightUnit = const Value.absent(),
                 Value<String?> instructions = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<List<BodyPart>> secondaryMuscles = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExercisesCompanion.insert(
@@ -4720,6 +4799,7 @@ class $$ExercisesTableTableManager
                 weightUnit: weightUnit,
                 instructions: instructions,
                 note: note,
+                secondaryMuscles: secondaryMuscles,
                 isCustom: isCustom,
                 rowid: rowid,
               ),

@@ -77,7 +77,7 @@ void main() {
 
   testWorkout('une ligne de repos sous chaque série, avec le temps prévu '
       '(RT-03)', (tester) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
     await addSet(tester);
 
     expect(find.text('2:00'), findsNWidgets(2));
@@ -86,7 +86,7 @@ void main() {
   testWorkout('repos terminé : ligne surlignée comme la série validée', (
     tester,
   ) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
     await addSet(tester);
     // Valider la 2e série arrête le repos de la 1re : il est terminé.
     await fillAndValidate(tester, 0);
@@ -111,17 +111,17 @@ void main() {
 
   testWorkout('valider une série lance le repos et programme la notification '
       '(RT-02, RT-05)', (tester) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
 
     await fillAndValidate(tester, 0);
 
     expect(runningBar(), findsOneWidget);
     final scheduled = notificationsOf(tester).scheduled;
-    expect(scheduled.single.nextExercise, 'Squat (barre)');
+    expect(scheduled.single.nextExercise, 'Squat (Barbell)');
   });
 
   testWorkout('dévalider la série arrête le repos', (tester) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
     await fillAndValidate(tester, 0);
 
     await tester.tap(find.byTooltip('Annuler la validation'));
@@ -135,7 +135,7 @@ void main() {
   testWorkout('valider la série suivante déplace le repos sous celle-ci', (
     tester,
   ) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
     await addSet(tester);
 
     await fillAndValidate(tester, 0);
@@ -148,7 +148,7 @@ void main() {
   testWorkout('toucher une ligne change le repos de cette série (RT-07)', (
     tester,
   ) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
     await addSet(tester);
 
     await chooseRest(tester, '1:30');
@@ -158,7 +158,7 @@ void main() {
   });
 
   testWorkout('… ou de toutes les séries de l’exercice', (tester) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
     await addSet(tester);
 
     await chooseRest(tester, '1:30', allSets: true);
@@ -169,13 +169,13 @@ void main() {
   testWorkout('… et l’enregistrer comme défaut de l’exercice (RT-09)', (
     tester,
   ) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
 
     await chooseRest(tester, '1:30', saveAsDefault: true);
     expect(find.text('1:30'), findsOneWidget);
 
     // La fiche de l'exercice a bien le nouveau temps par défaut.
-    await tester.tap(find.text('Squat (barre)'));
+    await tester.tap(find.text('Squat (Barbell)'));
     await tester.pumpAndSettle();
     expect(
       find.descendant(
@@ -189,7 +189,7 @@ void main() {
   testWorkout('« Sans repos » : valider ne lance pas de minuteur (RT-01)', (
     tester,
   ) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
     await chooseRest(tester, 'Sans repos');
     expect(find.text('Sans repos'), findsOneWidget);
 
@@ -207,14 +207,14 @@ void main() {
       defaultRestSeconds: 60,
     ),
     (tester) async {
-      await startWorkoutWith(tester, 'Développé couché (barre)');
+      await startWorkoutWith(tester, 'Bench Press (Barbell)');
 
       expect(find.text('1:00'), findsOneWidget);
     },
   );
 
   testWorkout('terminer la séance arrête le repos (RT-04)', (tester) async {
-    await startWorkoutWith(tester, 'Squat (barre)');
+    await startWorkoutWith(tester, 'Squat (Barbell)');
     await fillAndValidate(tester, 0);
 
     await tester.tap(find.text('Terminer'));

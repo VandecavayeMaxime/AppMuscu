@@ -35,7 +35,7 @@ void main() {
     ],
   );
 
-  /// Contenu lisible d'un modèle : ['Développé couché (barre) 80.0×8 90', …].
+  /// Contenu lisible d'un modèle : ['Bench Press (Barbell) 80.0×8 90', …].
   List<String> describe(TemplateDetails details) => [
     for (final item in details.exercises)
       for (final set in item.sets)
@@ -52,9 +52,9 @@ void main() {
         expect(details.template.name, 'Push');
         expect(details.lastUsedAt, isNull);
         expect(describe(details), [
-          'Développé couché (barre) 80.0×8 90',
-          'Développé couché (barre) 80.0×8 90',
-          'Squat (barre) null×null null',
+          'Bench Press (Barbell) 80.0×8 90',
+          'Bench Press (Barbell) 80.0×8 90',
+          'Squat (Barbell) null×null null',
         ]);
       },
     );
@@ -90,7 +90,7 @@ void main() {
 
       final details = (await templates.getTemplate(id))!;
       expect(details.template.name, 'Push lourd');
-      expect(describe(details), ['Squat (barre) 120.0×null null']);
+      expect(describe(details), ['Squat (Barbell) 120.0×null null']);
       // Les anciennes séries ont bien été effacées (suppression en cascade).
       expect(await db.select(db.templateSets).get(), hasLength(1));
     });
@@ -193,7 +193,7 @@ void main() {
 
         final details = (await templates.getTemplate(id))!;
         expect(details.template.name, 'Push');
-        expect(describe(details), ['Développé couché (barre) 85.0×6 120']);
+        expect(describe(details), ['Bench Press (Barbell) 85.0×6 120']);
       },
     );
   });

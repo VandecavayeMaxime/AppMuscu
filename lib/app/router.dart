@@ -5,6 +5,7 @@ import '../features/exercises/presentation/exercise_detail_screen.dart';
 import '../features/exercises/presentation/exercise_form_screen.dart';
 import '../features/exercises/presentation/exercises_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/stats/presentation/stats_screen.dart';
 import '../features/templates/presentation/template_editor_screen.dart';
 import '../features/workout/presentation/active_workout_screen.dart';
 import '../features/workout/presentation/workout_home_screen.dart';
@@ -36,7 +37,7 @@ GoRouter _createRouter() => GoRouter(
       builder: (context, state) =>
           WorkoutSummaryScreen(workoutId: state.pathParameters['workoutId']!),
     ),
-    // Les 3 onglets. Chaque branche garde sa propre pile d'écrans :
+    // Les 4 onglets. Chaque branche garde sa propre pile d'écrans :
     // on retrouve l'onglet dans l'état où on l'a laissé.
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
@@ -91,6 +92,24 @@ GoRouter _createRouter() => GoRouter(
                       ),
                     ),
                   ],
+                ),
+              ],
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/stats',
+              builder: (context, state) => const StatsScreen(),
+              routes: [
+                // Résumé d'une séance passée, en lecture seule (SA-03).
+                GoRoute(
+                  path: 'seance/:workoutId',
+                  builder: (context, state) => WorkoutSummaryScreen(
+                    workoutId: state.pathParameters['workoutId']!,
+                    readOnly: true,
+                  ),
                 ),
               ],
             ),

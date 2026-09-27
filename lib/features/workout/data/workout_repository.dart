@@ -341,6 +341,27 @@ class WorkoutRepository {
     )..where((w) => w.id.equals(workoutId))).go();
   }
 
+  /// Supprime une séance terminée (WO-23). Suppression douce (RG-10) : elle
+  /// reste en base, mais toutes les lectures l'ignorent (stats, historique,
+  /// « Précédent », dernière utilisation du modèle).
+  Future<void> deleteWorkout(String workoutId) {
+    final now = clock.now();
+    return (_db.update(_db.workouts)..where((w) => w.id.equals(workoutId)))
+        .write(WorkoutsCompanion(deletedAt: Value(now), updatedAt: Value(now)));
+  }
+
+  /// Annule [deleteWorkout] : la séance réapparaît partout.
+  Future<void> restoreWorkout(String workoutId) {
+    return (_db.update(
+      _db.workouts,
+    )..where((w) => w.id.equals(workoutId))).write(
+      WorkoutsCompanion(
+        deletedAt: const Value(null),
+        updatedAt: Value(clock.now()),
+      ),
+    );
+  }
+
   // ─── Exercices et séries ───────────────────────────────────────────────────
 
   /// Ajoute des exercices à la fin de la séance, chacun avec une série vide

@@ -19,10 +19,18 @@ import 'workout_providers.dart';
 /// Résumé affiché à la fin d'une séance (WO-18) : chiffres clés, puis chaque
 /// exercice avec ses séries et sa comparaison avec la dernière fois. Il
 /// propose aussi de mettre à jour le modèle d'origine (TP-07).
+///
+/// Ouvert depuis l'onglet Stats ([readOnly], SA-03), c'est un simple écran
+/// de consultation : flèche de retour, ni « OK » ni mise à jour du modèle.
 class WorkoutSummaryScreen extends ConsumerWidget {
-  const WorkoutSummaryScreen({super.key, required this.workoutId});
+  const WorkoutSummaryScreen({
+    super.key,
+    required this.workoutId,
+    this.readOnly = false,
+  });
 
   final String workoutId;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,8 +53,8 @@ class WorkoutSummaryScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Séance terminée'),
+        automaticallyImplyLeading: readOnly,
+        title: Text(readOnly ? 'Séance' : 'Séance terminée'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -69,7 +77,7 @@ class WorkoutSummaryScreen extends ConsumerWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          _UpdateTemplateCard(details),
+          if (!readOnly) _UpdateTemplateCard(details),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -88,15 +96,17 @@ class WorkoutSummaryScreen extends ConsumerWidget {
             _ExerciseSummaryCard(item: item, startedAt: workout.startedAt),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: FilledButton(
-            onPressed: () => context.go('/seance'),
-            child: const Text('OK'),
-          ),
-        ),
-      ),
+      bottomNavigationBar: readOnly
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: FilledButton(
+                  onPressed: () => context.go('/seance'),
+                  child: const Text('OK'),
+                ),
+              ),
+            ),
     );
   }
 }

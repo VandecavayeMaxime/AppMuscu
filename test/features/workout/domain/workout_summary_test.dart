@@ -35,6 +35,7 @@ Exercise _exercise(TrackingType type) => Exercise(
   nameNormalized: type.name,
   equipment: Equipment.barbell,
   bodyPart: BodyPart.chest,
+  secondaryMuscles: const [],
   trackingType: type,
   weightUnit: WeightUnit.kg,
   isCustom: false,

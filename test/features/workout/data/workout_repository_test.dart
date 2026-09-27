@@ -216,9 +216,9 @@ void main() {
 
       final exercises = (await details(workout.id)).exercises;
       expect(exercises.map((e) => e.exercise.name), [
-        'Développé couché (barre)',
-        'Squat (barre)',
-        'Tractions',
+        'Bench Press (Barbell)',
+        'Squat (Barbell)',
+        'Pull-Up',
       ]);
       expect(exercises.map((e) => e.entry.position), [0, 1, 2]);
       for (final exercise in exercises) {
@@ -301,7 +301,7 @@ void main() {
       final finished = await details(workout.id);
       expect(finished.workout.endedAt, isNotNull);
       expect(finished.exercises.map((e) => e.exercise.name), [
-        'Développé couché (barre)',
+        'Bench Press (Barbell)',
       ]);
       expect(finished.exercises.single.sets.map(describe), ['80.0×8']);
       expect(await repository.watchActiveWorkout().first, isNull);
@@ -402,6 +402,37 @@ void main() {
       expect(await repository.watchWorkoutDetails(workout.id).first, isNull);
       expect(await db.select(db.workoutExercises).get(), isEmpty);
       expect(await db.select(db.workoutSets).get(), isEmpty);
+    });
+
+    test('supprimer une séance terminée la garde en base, mais elle ne '
+        'compte plus ; annuler la fait revenir (WO-23)', () async {
+      await addWorkout(db, day: monday, sets: [TestSet(80, 8)]);
+      await addWorkout(db, day: wednesday, sets: [TestSet(90, 5)]);
+      final latest =
+          (await repository.watchExerciseHistory(benchPressId).first).first;
+      expect(latest.date, wednesday);
+      final workoutId = (await (db.select(
+        db.workouts,
+      )..where((w) => w.startedAt.equals(wednesday))).getSingle()).id;
+
+      await repository.deleteWorkout(workoutId);
+
+      final deleted = await (db.select(
+        db.workouts,
+      )..where((w) => w.id.equals(workoutId))).getSingle();
+      expect(deleted.deletedAt, isNotNull);
+      final history = await repository.watchExerciseHistory(benchPressId).first;
+      expect(history.map((s) => s.date), [monday]);
+      expect((await repository.previousSets(benchPressId)).map(describe), [
+        '80.0×8',
+      ]);
+
+      // Annuler la suppression la fait revenir.
+      await repository.restoreWorkout(workoutId);
+      final restored = await repository
+          .watchExerciseHistory(benchPressId)
+          .first;
+      expect(restored.map((s) => s.date), [wednesday, monday]);
     });
   });
 }

@@ -10,8 +10,7 @@ void main() {
   Future<void> openExercise(WidgetTester tester, String name) async {
     await tester.tap(tab('Exercices'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(name));
-    await tester.pumpAndSettle();
+    await tapExercise(tester, name);
   }
 
   Future<void> openHistory(WidgetTester tester) async {
@@ -23,10 +22,10 @@ void main() {
     testApp('affiche groupe, catégorie, instructions et préférences', (
       tester,
     ) async {
-      await openExercise(tester, 'Développé couché (barre)');
+      await openExercise(tester, 'Bench Press (Barbell)');
 
       expect(
-        find.widgetWithText(AppBar, 'Développé couché (barre)'),
+        find.widgetWithText(AppBar, 'Bench Press (Barbell)'),
         findsOneWidget,
       );
       expect(find.text('Pectoraux'), findsOneWidget);
@@ -39,7 +38,7 @@ void main() {
     testApp('note personnelle, même pour un exercice intégré (EX-11)', (
       tester,
     ) async {
-      await openExercise(tester, 'Développé couché (barre)');
+      await openExercise(tester, 'Bench Press (Barbell)');
       expect(find.text('Aucune note'), findsOneWidget);
 
       await tester.tap(find.text('Aucune note'));
@@ -64,7 +63,7 @@ void main() {
     });
 
     testApp('change l’unité et le minuteur de repos', (tester) async {
-      await openExercise(tester, 'Développé couché (barre)');
+      await openExercise(tester, 'Bench Press (Barbell)');
 
       await tester.tap(find.text('lb'));
       await tester.pumpAndSettle();
@@ -83,7 +82,7 @@ void main() {
     testApp('pas de préférence d’unité pour un exercice sans poids', (
       tester,
     ) async {
-      await openExercise(tester, 'Tractions');
+      await openExercise(tester, 'Pull-Up');
 
       expect(find.text('Unité'), findsNothing);
       expect(find.text('Minuteur de repos'), findsOneWidget);
@@ -92,7 +91,7 @@ void main() {
 
   group('onglet Historique', () {
     testApp('message quand l’exercice n’a jamais été fait', (tester) async {
-      await openExercise(tester, 'Développé couché (barre)');
+      await openExercise(tester, 'Bench Press (Barbell)');
       await openHistory(tester);
 
       expect(find.text("Pas encore d'historique"), findsOneWidget);
@@ -119,7 +118,7 @@ void main() {
         );
       },
       (tester) async {
-        await openExercise(tester, 'Développé couché (barre)');
+        await openExercise(tester, 'Bench Press (Barbell)');
         await openHistory(tester);
 
         expect(find.text('Push'), findsOneWidget);
@@ -153,7 +152,7 @@ void main() {
         );
       },
       (tester) async {
-        await openExercise(tester, 'Développé couché (barre)');
+        await openExercise(tester, 'Bench Press (Barbell)');
         await tester.tap(find.text('lb'));
         await tester.pumpAndSettle();
         await openHistory(tester);

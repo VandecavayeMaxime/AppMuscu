@@ -5,6 +5,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/duration_format.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/section_title.dart';
+import '../../stats/presentation/exercise_stats_tab.dart';
 import '../../workout/data/workout_repository.dart';
 import '../../workout/domain/best_set.dart';
 import '../../workout/domain/set_numbering.dart';
@@ -17,7 +19,8 @@ import 'exercise_note.dart';
 /// Temps de repos proposés en secondes ; 0 = minuteur désactivé (RT-01).
 const _restChoices = [0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
 
-/// Fiche d'un exercice : onglets « À propos » et « Historique » (EX-07).
+/// Fiche d'un exercice : onglets « À propos », « Historique » et
+/// « Statistiques » (EX-07).
 class ExerciseDetailScreen extends ConsumerWidget {
   const ExerciseDetailScreen({
     super.key,
@@ -71,7 +74,7 @@ class _ExerciseDetail extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(exercise.name),
@@ -104,11 +107,16 @@ class _ExerciseDetail extends ConsumerWidget {
             tabs: [
               Tab(text: 'À propos'),
               Tab(text: 'Historique'),
+              Tab(text: 'Statistiques'),
             ],
           ),
         ),
         body: TabBarView(
-          children: [_AboutTab(exercise), _HistoryTab(exercise)],
+          children: [
+            _AboutTab(exercise),
+            _HistoryTab(exercise),
+            ExerciseStatsTab(exercise),
+          ],
         ),
       ),
     );
@@ -180,13 +188,20 @@ class _AboutTab extends ConsumerWidget {
           title: const Text('Groupe musculaire'),
           trailing: Text(exercise.bodyPart.label),
         ),
+        if (exercise.secondaryMuscles.isNotEmpty)
+          ListTile(
+            title: const Text('Muscles secondaires'),
+            trailing: Text(
+              exercise.secondaryMuscles.map((m) => m.label).join(', '),
+            ),
+          ),
         ListTile(
           title: const Text('Catégorie'),
           trailing: Text(exercise.equipment.label),
         ),
         // Note personnelle, modifiable même pour un exercice intégré, et
         // même depuis une séance (EX-11).
-        const _SectionTitle('Note'),
+        const SectionTitle('Note'),
         ListTile(
           title: Text(
             exercise.note ?? 'Aucune note',
@@ -199,7 +214,7 @@ class _AboutTab extends ConsumerWidget {
           trailing: const Icon(Icons.edit_outlined),
           onTap: () => editExerciseNote(context, ref, exercise),
         ),
-        const _SectionTitle('Instructions'),
+        const SectionTitle('Instructions'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
@@ -207,7 +222,7 @@ class _AboutTab extends ConsumerWidget {
             style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
           ),
         ),
-        const _SectionTitle('Préférences'),
+        const SectionTitle('Préférences'),
         if (exercise.trackingType == TrackingType.weightReps)
           ListTile(
             title: const Text('Unité'),
@@ -284,26 +299,6 @@ String _restLabel(int? seconds) => switch (seconds) {
   0 => 'Désactivé',
   _ => formatDuration(seconds),
 };
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-      child: Text(
-        title,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.primary,
-        ),
-      ),
-    );
-  }
-}
 
 // ─── Onglet « Historique » ───────────────────────────────────────────────────
 

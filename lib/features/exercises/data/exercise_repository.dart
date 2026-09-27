@@ -58,6 +58,7 @@ class ExerciseRepository {
     required String name,
     required Equipment equipment,
     required BodyPart bodyPart,
+    List<BodyPart> secondaryMuscles = const [],
     required TrackingType trackingType,
     String? instructions,
   }) async {
@@ -71,6 +72,7 @@ class ExerciseRepository {
             nameNormalized: normalizeForSearch(cleanName),
             equipment: equipment,
             bodyPart: bodyPart,
+            secondaryMuscles: Value(secondaryMuscles),
             trackingType: trackingType,
             instructions: Value(instructions),
             isCustom: const Value(true),
@@ -85,6 +87,7 @@ class ExerciseRepository {
     required String name,
     required Equipment equipment,
     required BodyPart bodyPart,
+    List<BodyPart> secondaryMuscles = const [],
     required TrackingType trackingType,
     String? instructions,
   }) async {
@@ -98,6 +101,7 @@ class ExerciseRepository {
         nameNormalized: Value(normalizeForSearch(cleanName)),
         equipment: Value(equipment),
         bodyPart: Value(bodyPart),
+        secondaryMuscles: Value(secondaryMuscles),
         trackingType: Value(trackingType),
         instructions: Value(instructions),
         updatedAt: Value(clock.now()),

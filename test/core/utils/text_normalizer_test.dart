@@ -6,7 +6,7 @@ void main() {
     test('met en minuscules et retire les accents', () {
       expect(normalizeForSearch('Développé Couché'), 'developpe couche');
       expect(normalizeForSearch('ÉPAULES à la poulie'), 'epaules a la poulie');
-      expect(normalizeForSearch('Presse à cuisses'), 'presse a cuisses');
+      expect(normalizeForSearch('Café à emporter'), 'cafe a emporter');
     });
 
     test('remplace les ligatures', () {

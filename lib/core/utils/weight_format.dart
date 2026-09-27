@@ -4,9 +4,13 @@ import '../../features/exercises/domain/exercise_enums.dart';
 /// française, au plus 2 décimales, zéros inutiles retirés.
 ///
 /// Exemples : 82.5 kg → `'82,5'` ; 100 kg → `'100'` ; 20.41165665 kg en lb → `'45'`.
-String formatWeight(double kg, WeightUnit unit) {
-  return unit
-      .fromKg(kg)
+String formatWeight(double kg, WeightUnit unit) =>
+    formatNumber(unit.fromKg(kg));
+
+/// Nombre à la française, au plus 2 décimales, zéros inutiles retirés :
+/// 82.5 → `'82,5'` ; 100.0 → `'100'` ; 1.849 → `'1,85'`.
+String formatNumber(double value) {
+  return value
       .toStringAsFixed(2)
       .replaceFirst(RegExp(r'\.?0+$'), '')
       .replaceAll('.', ',');

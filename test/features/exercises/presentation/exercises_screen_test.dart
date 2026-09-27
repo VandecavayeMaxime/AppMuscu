@@ -19,7 +19,10 @@ void main() {
 
   /// Ouvre la liste déroulante [label] et choisit [choice].
   Future<void> choose(WidgetTester tester, String label, String choice) async {
-    await tester.tap(find.text(label));
+    // `warnIfMissed: false` : une fois une valeur choisie, le libellé se
+    // réduit en petit label flottant, en dehors de sa zone tactile réelle
+    // (le `InputDecorator` autour reste bien touché, lui).
+    await tester.tap(find.text(label), warnIfMissed: false);
     await tester.pumpAndSettle();
     await tester.tap(find.text(choice).last);
     await tester.pumpAndSettle();
@@ -28,28 +31,35 @@ void main() {
   Finder nameField() => find.widgetWithText(TextFormField, 'Nom');
 
   group('liste (EX-02, EX-03)', () {
-    testApp('affiche les 10 exercices de base par ordre alphabétique', (
+    testApp('affiche les 83 exercices de base par ordre alphabétique', (
       tester,
     ) async {
       await openExercisesTab(tester);
 
-      expect(find.byType(ListTile), findsNWidgets(10));
+      // La bibliothèque est grande : seul le début de la liste est construit
+      // (liste paresseuse), d'où des vérifications sur les tout premiers.
       expect(
-        tester.getTopLeft(find.text('Curl biceps (haltères)')).dy,
-        lessThan(tester.getTopLeft(find.text('Tractions')).dy),
+        tester.getTopLeft(find.text('Ab Wheel Rollout')).dy,
+        lessThan(tester.getTopLeft(find.text('Arnold Press')).dy),
       );
-      expect(find.text('Pectoraux · Barre'), findsOneWidget);
+      // Seul « Ab Wheel Rollout » est abdos + autre.
+      expect(find.text('Abdos · Autre'), findsOneWidget);
+      // Barre verticale toujours visible, pour voir où on en est.
+      expect(
+        tester.widget<Scrollbar>(find.byType(Scrollbar)).thumbVisibility,
+        isTrue,
+      );
     });
 
     testApp('recherche sans tenir compte des accents', (tester) async {
       await openExercisesTab(tester);
 
-      await tester.enterText(find.byType(SearchBar), 'developpe');
+      await tester.enterText(find.byType(SearchBar), 'press');
       await tester.pumpAndSettle();
 
-      expect(find.byType(ListTile), findsNWidgets(2));
-      expect(find.text('Développé couché (barre)'), findsOneWidget);
-      expect(find.text('Développé militaire (barre)'), findsOneWidget);
+      expect(find.byType(ListTile), findsNWidgets(11));
+      expect(find.text('Bench Press (Barbell)'), findsOneWidget);
+      expect(find.text('Overhead Press (Barbell)'), findsOneWidget);
     });
 
     testApp('affiche un message quand rien ne correspond', (tester) async {
@@ -68,16 +78,19 @@ void main() {
 
       await tester.tap(find.text('Groupe musculaire'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Dos'));
+      await tester.tap(find.text('Dorsaux'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(ListTile), findsNWidgets(3));
-      expect(find.text('Tractions'), findsOneWidget);
+      expect(find.byType(ListTile), findsNWidgets(8));
+      expect(find.text('Pull-Up'), findsOneWidget);
+      // Retiré par le filtre : pas un exercice de dos.
+      expect(find.text('Ab Wheel Rollout'), findsNothing);
 
       await tester.tap(find.byTooltip('Retirer le filtre'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(ListTile), findsNWidgets(10));
+      // Premier de la liste complète, revenu en tête.
+      expect(find.text('Ab Wheel Rollout'), findsOneWidget);
     });
   });
 
@@ -85,15 +98,19 @@ void main() {
     testApp('crée un exercice perso', (tester) async {
       await openNewExerciseForm(tester);
 
-      await tester.enterText(nameField(), 'Hip thrust');
+      await tester.enterText(nameField(), 'Exercice test');
       await choose(tester, 'Groupe musculaire', 'Fessiers');
       await choose(tester, 'Catégorie', 'Barre');
       await tester.tap(find.text('Enregistrer'));
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(AppBar, 'Exercices'), findsOneWidget);
-      expect(find.text('Hip thrust'), findsOneWidget);
-      expect(find.text('Fessiers · Barre'), findsOneWidget);
+      final tile = await findExerciseTile(tester, 'Exercice test');
+      expect(tile, findsOneWidget);
+      expect(
+        find.descendant(of: tile, matching: find.text('Fessiers · Barre')),
+        findsOneWidget,
+      );
     });
 
     testApp('exige les champs obligatoires', (tester) async {
@@ -107,10 +124,46 @@ void main() {
       expect(find.text('Choisis une catégorie'), findsOneWidget);
     });
 
+    testApp('muscles secondaires : le groupe principal est exclu, retiré s’il '
+        'redevient le principal (EX-04)', (tester) async {
+      await openNewExerciseForm(tester);
+
+      await tester.enterText(nameField(), 'Exercice test');
+      await choose(tester, 'Groupe musculaire', 'Fessiers');
+      // Le groupe principal ne se propose pas comme muscle secondaire.
+      expect(find.widgetWithText(FilterChip, 'Fessiers'), findsNothing);
+
+      await tester.tap(find.widgetWithText(FilterChip, 'Quadriceps'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilterChip, 'Ischios'));
+      await tester.pumpAndSettle();
+
+      // Changer le groupe principal retire le muscle devenu principal.
+      await choose(tester, 'Groupe musculaire', 'Quadriceps');
+      expect(find.widgetWithText(FilterChip, 'Quadriceps'), findsNothing);
+      expect(
+        tester
+            .widget<FilterChip>(find.widgetWithText(FilterChip, 'Ischios'))
+            .selected,
+        isTrue,
+      );
+
+      await choose(tester, 'Catégorie', 'Barre');
+      await tester.tap(find.text('Enregistrer'));
+      await tester.pumpAndSettle();
+
+      await tapExercise(tester, 'Exercice test');
+      expect(
+        find.widgetWithText(ListTile, 'Muscles secondaires'),
+        findsOneWidget,
+      );
+      expect(find.text('Ischios'), findsOneWidget);
+    });
+
     testApp('refuse un nom déjà pris', (tester) async {
       await openNewExerciseForm(tester);
 
-      await tester.enterText(nameField(), 'squat (BARRE)');
+      await tester.enterText(nameField(), 'squat (BARBELL)');
       await choose(tester, 'Groupe musculaire', 'Quadriceps');
       await choose(tester, 'Catégorie', 'Barre');
       await tester.tap(find.text('Enregistrer'));
@@ -124,7 +177,7 @@ void main() {
     testApp(
       'modifie puis supprime un exercice perso',
       setUp: (db) => ExerciseRepository(db).createCustom(
-        name: 'Hip thrust',
+        name: 'Exercice test',
         equipment: Equipment.barbell,
         bodyPart: BodyPart.glutes,
         trackingType: TrackingType.weightReps,
@@ -138,17 +191,16 @@ void main() {
         }
 
         await openExercisesTab(tester);
-        await tester.tap(find.text('Hip thrust'));
-        await tester.pumpAndSettle();
+        await tapExercise(tester, 'Exercice test');
 
         // Fiche → Modifier → formulaire → retour à la fiche.
         await openMenu('Modifier');
         expect(find.text("Modifier l'exercice"), findsOneWidget);
-        await tester.enterText(nameField(), 'Hip thrust (machine)');
+        await tester.enterText(nameField(), 'Exercice test (machine)');
         await tester.tap(find.text('Enregistrer'));
         await tester.pumpAndSettle();
         expect(
-          find.widgetWithText(AppBar, 'Hip thrust (machine)'),
+          find.widgetWithText(AppBar, 'Exercice test (machine)'),
           findsOneWidget,
         );
 
@@ -158,8 +210,11 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.widgetWithText(AppBar, 'Exercices'), findsOneWidget);
-        expect(find.text('Hip thrust (machine)'), findsNothing);
-        expect(find.byType(ListTile), findsNWidgets(10));
+        expect(find.text('Exercice test (machine)'), findsNothing);
+        expect(
+          await findExerciseTile(tester, 'Ab Wheel Rollout'),
+          findsOneWidget,
+        );
       },
     );
 
@@ -168,10 +223,9 @@ void main() {
     ) async {
       await openExercisesTab(tester);
 
-      await tester.tap(find.text('Squat (barre)'));
-      await tester.pumpAndSettle();
+      await tapExercise(tester, 'Squat (Barbell)');
 
-      expect(find.widgetWithText(AppBar, 'Squat (barre)'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Squat (Barbell)'), findsOneWidget);
       expect(find.byTooltip("Plus d'options"), findsNothing);
     });
   });

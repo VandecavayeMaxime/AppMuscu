@@ -23,7 +23,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ajouter des exercices'));
     await tester.pumpAndSettle();
-    await checkExercise(tester, 'Squat (barre)');
+    await checkExercise(tester, 'Squat (Barbell)');
     await tester.tap(find.textContaining('Ajouter ('));
     await tester.pumpAndSettle();
   }

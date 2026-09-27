@@ -31,13 +31,14 @@ class TestSet {
   final SetType type;
 }
 
-/// Ajoute une séance d'un seul exercice.
+/// Ajoute une séance d'un seul exercice (d'une heure, si elle est terminée).
 Future<void> addWorkout(
   AppDatabase db, {
   required DateTime day,
   required List<TestSet> sets,
   String name = 'Séance',
   String exerciseId = benchPressId,
+  String? templateId,
   bool finished = true,
   bool deleted = false,
 }) async {
@@ -46,6 +47,7 @@ Future<void> addWorkout(
       .insertReturning(
         WorkoutsCompanion.insert(
           name: name,
+          templateId: Value(templateId),
           startedAt: Value(day),
           endedAt: Value(finished ? day.add(const Duration(hours: 1)) : null),
           deletedAt: Value(deleted ? day : null),

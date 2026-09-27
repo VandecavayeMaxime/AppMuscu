@@ -12,10 +12,10 @@ void main() {
   tearDown(() => db.close());
 
   group('bibliothèque initiale (EX-01)', () {
-    test('contient les 10 exercices de base', () async {
+    test('contient les 83 exercices de base', () async {
       final exercises = await db.select(db.exercises).get();
 
-      expect(exercises, hasLength(10));
+      expect(exercises, hasLength(83));
       expect(
         exercises.every((e) => !e.isCustom && e.deletedAt == null),
         isTrue,
@@ -23,10 +23,10 @@ void main() {
       expect(
         exercises.map((e) => e.name),
         containsAll([
-          'Développé couché (barre)',
-          'Squat (barre)',
-          'Tractions',
-          'Gainage (planche)',
+          'Bench Press (Barbell)',
+          'Squat (Barbell)',
+          'Pull-Up',
+          'Plank',
         ]),
       );
     });

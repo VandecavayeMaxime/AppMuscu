@@ -32,7 +32,7 @@ void main() {
     () => controller.start(
       setId: setId,
       seconds: seconds,
-      nextExercise: 'Squat (barre)',
+      nextExercise: 'Squat (Barbell)',
     ),
   );
 
@@ -45,7 +45,7 @@ void main() {
     expect(timer.endsAt, now.add(const Duration(seconds: 90)));
     expect(timer.totalSeconds, 90);
     expect(notifications.scheduled.single.at, timer.endsAt);
-    expect(notifications.scheduled.single.nextExercise, 'Squat (barre)');
+    expect(notifications.scheduled.single.nextExercise, 'Squat (Barbell)');
   });
 
   test('un nouveau repos remplace le précédent', () async {

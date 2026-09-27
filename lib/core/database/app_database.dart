@@ -4,6 +4,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../features/exercises/domain/exercise_enums.dart';
 import '../../features/workout/domain/set_type.dart';
+import '../utils/text_normalizer.dart';
 import 'app_database.steps.dart';
 import 'seed/built_in_exercises.dart';
 import 'tables.dart';
@@ -34,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
   /// 2. `dart run build_runner build` puis `dart run drift_dev make-migrations` ;
   /// 3. écrire l'étape `fromXToY` ci-dessous et compléter test/drift/.
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,6 +83,71 @@ class AppDatabase extends _$AppDatabase {
             LIMIT 1
           )
         ''');
+      },
+      // v5 : muscles secondaires (carte des muscles, SA-04). Les exercices
+      // intégrés reçoivent d'office ceux du tableau de la bibliothèque.
+      from4To5: (m, schema) async {
+        await m.addColumn(schema.exercises, schema.exercises.secondaryMuscles);
+        for (final MapEntry(key: id, value: muscles)
+            in builtInSecondaryMuscles.entries) {
+          await customUpdate(
+            'UPDATE exercises SET secondary_muscles = ? WHERE id = ?',
+            variables: [
+              Variable(muscles.map((part) => part.name).join(',')),
+              Variable(id),
+            ],
+          );
+        }
+      },
+      // v6 : découpage plus fin des groupes musculaires (D20) : « Dos »
+      // devient trapèzes / dorsaux / lombaires, « Abdos » gagne les
+      // obliques, « Quadriceps » gagne les adducteurs. La structure ne
+      // change pas (aucune colonne ajoutée) : seules les valeurs stockées
+      // sont corrigées, sur `body_part` et dans les listes de
+      // `secondary_muscles`.
+      from5To6: (m, schema) async {
+        // Par défaut, un exercice perso « Dos » devient « Dorsaux » (le
+        // sens le plus courant). Puis on précise les 3 exercices intégrés
+        // qui utilisaient « Dos » (Rowing, Tractions, Soulevé de terre).
+        await customStatement(
+          "UPDATE exercises SET body_part = 'lats' WHERE body_part = 'back'",
+        );
+        for (final MapEntry(key: id, value: bodyPart)
+            in builtInBodyParts.entries) {
+          await customUpdate(
+            'UPDATE exercises SET body_part = ? WHERE id = ?',
+            variables: [Variable(bodyPart.name), Variable(id)],
+          );
+        }
+        // Aucun exercice intégré n'avait « Dos » en muscle secondaire, mais
+        // un exercice perso aurait pu : même bascule vers « dorsaux ». Sans
+        // risque de confusion : aucune autre valeur ne contient « back »
+        // (« lowerBack » s'écrit avec un B majuscule).
+        await customStatement(
+          "UPDATE exercises SET secondary_muscles = "
+          "REPLACE(secondary_muscles, 'back', 'lats')",
+        );
+      },
+      // v7 : bibliothèque élargie (D21) — 73 exercices de plus, pour que
+      // chaque groupe musculaire de la carte des muscles ait au moins un
+      // exercice. Aucune colonne ajoutée : la structure ne change pas, donc
+      // on écrit avec la table réelle (`exercices`), pas `schema.exercises`.
+      from6To7: (m, schema) async {
+        await batch((b) => b.insertAll(exercises, builtInExercisesAddedInV7));
+      },
+      // v8 : les exercices intégrés reprennent leur nom d'usage en salle, en
+      // anglais (D22), plutôt qu'une traduction française.
+      from7To8: (m, schema) async {
+        for (final MapEntry(key: id, value: name) in builtInNames.entries) {
+          await customUpdate(
+            'UPDATE exercises SET name = ?, name_normalized = ? WHERE id = ?',
+            variables: [
+              Variable(name),
+              Variable(normalizeForSearch(name)),
+              Variable(id),
+            ],
+          );
+        }
       },
     ),
     // À chaque ouverture : SQLite n'applique les clés étrangères que si on le demande.

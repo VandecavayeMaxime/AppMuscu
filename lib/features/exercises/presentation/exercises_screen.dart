@@ -135,12 +135,17 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                       title: 'Aucun exercice trouvé',
                       message: 'Essaie un autre nom ou retire les filtres.',
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(
-                        bottom: 88,
-                      ), // place du bouton +
-                      itemCount: list.length,
-                      itemBuilder: (context, index) => _tile(list[index]),
+                  // Barre verticale toujours visible : la bibliothèque est
+                  // grande (83 exercices), pour voir où on en est.
+                  : Scrollbar(
+                      thumbVisibility: true,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.only(
+                          bottom: 88,
+                        ), // place du bouton +
+                        itemCount: list.length,
+                        itemBuilder: (context, index) => _tile(list[index]),
+                      ),
                     ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => EmptyState(

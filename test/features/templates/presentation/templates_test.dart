@@ -55,7 +55,7 @@ void main() {
       await tapAndSettle(tester, find.text('Nouveau'));
       expect(find.text('Nouveau modèle'), findsOneWidget);
       await tester.enterText(nameField, 'Push');
-      await addExercises(tester, ['Développé couché (barre)']);
+      await addExercises(tester, ['Bench Press (Barbell)']);
       await tester.enterText(field(1), '80');
       await tester.enterText(field(2), '8');
       await tapAndSettle(tester, find.text('Ajouter une série'));
@@ -67,7 +67,7 @@ void main() {
       await tapAndSettle(tester, find.text('Enregistrer'));
 
       expect(find.text('Push'), findsOneWidget);
-      expect(find.text('2 × Développé couché (barre)'), findsOneWidget);
+      expect(find.text('2 × Bench Press (Barbell)'), findsOneWidget);
       expect(find.text('Jamais utilisé'), findsOneWidget);
     });
 
@@ -130,12 +130,12 @@ void main() {
       setUp: (db) => addTemplate(db),
       (tester) async {
         await openMenu(tester, 'Modifier');
-        await addExercises(tester, ['Squat (barre)', 'Tractions']);
+        await addExercises(tester, ['Squat (Barbell)', 'Pull-Up']);
 
         // Appui long sur un nom : exercices réduits, à faire glisser.
-        await tester.longPress(find.text('Squat (barre)'));
+        await tester.longPress(find.text('Squat (Barbell)'));
         await tester.pumpAndSettle();
-        await dragUp(tester, 'Squat (barre)');
+        await dragUp(tester, 'Squat (Barbell)');
         await tapAndSettle(tester, find.text('OK'));
 
         await tapAndSettle(
@@ -146,11 +146,11 @@ void main() {
         await tapAndSettle(tester, find.text('Enregistrer'));
 
         // Carte : un exercice par ligne, dans le nouvel ordre.
-        final squat = find.text('1 × Squat (barre)');
-        final bench = find.text('1 × Développé couché (barre)');
+        final squat = find.text('1 × Squat (Barbell)');
+        final bench = find.text('1 × Bench Press (Barbell)');
         expect(squat, findsOneWidget);
         expect(bench, findsOneWidget);
-        expect(find.text('1 × Tractions'), findsNothing);
+        expect(find.text('1 × Pull-Up'), findsNothing);
         expect(
           tester.getTopLeft(squat).dy,
           lessThan(tester.getTopLeft(bench).dy),
@@ -185,7 +185,7 @@ void main() {
       // Le modèle n'a pas changé : on sort sans question, et la note reste.
       await tapAndSettle(tester, find.byType(BackButton));
       await tapAndSettle(tester, tab('Exercices'));
-      await tapAndSettle(tester, find.text('Développé couché (barre)'));
+      await tapExercise(tester, 'Bench Press (Barbell)');
       expect(find.text('Siège cran 5'), findsOneWidget);
     },
   );

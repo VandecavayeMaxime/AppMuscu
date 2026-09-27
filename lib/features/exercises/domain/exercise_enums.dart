@@ -21,16 +21,22 @@ enum Equipment {
   final String label;
 }
 
-/// Groupe musculaire principal.
+/// Groupe musculaire principal. *Découpage affiné en v6 (D20) : « Dos »,
+/// « Abdos » et « Quadriceps » sont chacun devenus plusieurs valeurs plus
+/// précises ; voir la migration `from5To6` pour les anciennes séances.*
 enum BodyPart {
   chest('Pectoraux'),
-  back('Dos'),
+  trapezius('Trapèzes'),
+  lats('Dorsaux'),
+  lowerBack('Lombaires'),
   shoulders('Épaules'),
   biceps('Biceps'),
   triceps('Triceps'),
   forearms('Avant-bras'),
   abs('Abdos'),
+  obliques('Obliques'),
   quads('Quadriceps'),
+  adductors('Adducteurs'),
   hamstrings('Ischios'),
   glutes('Fessiers'),
   calves('Mollets'),
@@ -42,6 +48,29 @@ enum BodyPart {
 
   final String label;
 }
+
+/// Groupes musculaires représentés sur la carte des muscles (SA-04), colorés
+/// selon les séries (RG-17) : tous sauf « Corps entier », « Cardio » et
+/// « Autre », qui n'ont pas de zone dédiée sur la silhouette. Sert aussi à
+/// choisir les muscles secondaires d'un exercice (EX-04) : le groupe
+/// principal n'en fait pas partie.
+const muscleMapBodyParts = [
+  BodyPart.chest,
+  BodyPart.trapezius,
+  BodyPart.lats,
+  BodyPart.lowerBack,
+  BodyPart.shoulders,
+  BodyPart.biceps,
+  BodyPart.triceps,
+  BodyPart.forearms,
+  BodyPart.abs,
+  BodyPart.obliques,
+  BodyPart.quads,
+  BodyPart.adductors,
+  BodyPart.hamstrings,
+  BodyPart.glutes,
+  BodyPart.calves,
+];
 
 /// Unité de saisie et d'affichage des poids, choisie par exercice (EX-08).
 /// En base, les poids sont toujours en kg (RG-14).

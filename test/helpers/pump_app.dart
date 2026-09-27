@@ -65,17 +65,60 @@ FakeScreenAwake screenAwakeOf(WidgetTester tester) =>
             .read(screenAwakeProvider)
         as FakeScreenAwake;
 
+/// Le défileur de la liste d'exercices (bibliothèque ou sélecteur). Pas
+/// `Scrollable` seul : la barre de filtres défile aussi horizontalement, et
+/// passerait avant la liste (`.first`).
+Finder _exerciseListScrollable() => find.descendant(
+  of: find.byType(ListView),
+  matching: find.byType(Scrollable),
+);
+
+/// Remonte la liste tout en haut : `scrollUntilVisible` ne défile que vers
+/// le bas, donc chercher un exercice plus haut dans l'ordre alphabétique que
+/// le dernier trouvé échouerait sans ça (liste de 83 exercices).
+Future<void> _scrollExerciseListToTop(WidgetTester tester) async {
+  await tester.drag(_exerciseListScrollable(), const Offset(0, 100000));
+  await tester.pumpAndSettle();
+}
+
+/// Trouve l'exercice [name] dans une liste paresseuse (bibliothèque ou
+/// sélecteur), en faisant défiler jusqu'à lui si besoin. Sert aussi bien à
+/// vérifier sa présence (`expect(await findExerciseTile(...), findsOneWidget)`)
+/// qu'à le toucher.
+Future<Finder> findExerciseTile(WidgetTester tester, String name) async {
+  await _scrollExerciseListToTop(tester);
+  final tile = find.widgetWithText(ListTile, name);
+  // `ensureVisible` ne suffit pas : dans une liste paresseuse, un exercice
+  // trop loin n'a pas encore de widget tant qu'on n'a pas défilé jusqu'à
+  // lui. `scrollUntilVisible` fait défiler par petits pas et reconstruit la
+  // liste à chaque fois, jusqu'à le trouver.
+  await tester.scrollUntilVisible(
+    tile,
+    200,
+    scrollable: _exerciseListScrollable(),
+  );
+  return tile;
+}
+
 /// Dans le sélecteur d'exercices, coche l'exercice [name], en faisant
 /// d'abord défiler la liste jusqu'à lui.
 Future<void> checkExercise(WidgetTester tester, String name) async {
-  final checkbox = find.descendant(
-    of: find.widgetWithText(ListTile, name),
-    matching: find.byType(Checkbox),
-  );
+  final tile = await findExerciseTile(tester, name);
+  final checkbox = find.descendant(of: tile, matching: find.byType(Checkbox));
   await tester.ensureVisible(checkbox);
   await tester.pumpAndSettle();
   await tester.tap(checkbox);
   await tester.pump();
+}
+
+/// Touche l'exercice [name] dans une liste (bibliothèque, sélecteur…), en
+/// faisant d'abord défiler jusqu'à lui (voir [checkExercise]).
+Future<void> tapExercise(WidgetTester tester, String name) async {
+  final tile = await findExerciseTile(tester, name);
+  await tester.ensureVisible(tile);
+  await tester.pumpAndSettle();
+  await tester.tap(tile);
+  await tester.pumpAndSettle();
 }
 
 /// En mode « réorganiser », fait glisser l'exercice [name] par sa poignée

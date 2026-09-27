@@ -66,6 +66,7 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
     text: widget.initial?.instructions,
   );
   late BodyPart? _bodyPart = widget.initial?.bodyPart;
+  late final _secondaryMuscles = {...?widget.initial?.secondaryMuscles};
   late Equipment? _equipment = widget.initial?.equipment;
   late TrackingType _trackingType =
       widget.initial?.trackingType ?? TrackingType.weightReps;
@@ -123,9 +124,38 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
                 for (final value in BodyPart.values)
                   DropdownMenuItem(value: value, child: Text(value.label)),
               ],
-              onChanged: (value) => _bodyPart = value,
+              onChanged: (value) => setState(() {
+                _bodyPart = value;
+                // Le groupe principal ne peut pas être aussi secondaire.
+                _secondaryMuscles.remove(value);
+              }),
               validator: (value) =>
                   value == null ? 'Choisis un groupe musculaire' : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Muscles secondaires (facultatif)',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final muscle in muscleMapBodyParts)
+                  if (muscle != _bodyPart)
+                    FilterChip(
+                      label: Text(muscle.label),
+                      selected: _secondaryMuscles.contains(muscle),
+                      onSelected: (selected) => setState(() {
+                        if (selected) {
+                          _secondaryMuscles.add(muscle);
+                        } else {
+                          _secondaryMuscles.remove(muscle);
+                        }
+                      }),
+                    ),
+              ],
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<Equipment>(
@@ -186,6 +216,7 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
           name: _nameController.text,
           equipment: _equipment!,
           bodyPart: _bodyPart!,
+          secondaryMuscles: _secondaryMuscles.toList(),
           trackingType: _trackingType,
           instructions: instructions,
         );
@@ -197,6 +228,7 @@ class _ExerciseFormState extends ConsumerState<_ExerciseForm> {
           name: _nameController.text,
           equipment: _equipment!,
           bodyPart: _bodyPart!,
+          secondaryMuscles: _secondaryMuscles.toList(),
           trackingType: _trackingType,
           instructions: instructions,
         );

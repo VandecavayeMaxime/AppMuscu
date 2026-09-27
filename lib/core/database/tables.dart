@@ -21,6 +21,22 @@ const _uuid = Uuid();
 /// Nouvel identifiant unique (UUID v4), généré sur l'appareil.
 String newId() => _uuid.v4();
 
+/// Stocke une liste de [BodyPart] dans une colonne texte, séparés par des
+/// virgules (`'triceps,shoulders'`). Sert aux muscles secondaires d'un
+/// exercice (EX-04, EX-09), *ajoutée en v5*.
+class BodyPartListConverter extends TypeConverter<List<BodyPart>, String> {
+  const BodyPartListConverter();
+
+  @override
+  List<BodyPart> fromSql(String fromDb) => fromDb.isEmpty
+      ? const []
+      : [for (final name in fromDb.split(',')) BodyPart.values.byName(name)];
+
+  @override
+  String toSql(List<BodyPart> value) =>
+      value.map((part) => part.name).join(',');
+}
+
 /// Clé primaire : un UUID généré sur l'appareil (NF-07, prêt pour la sync).
 mixin UuidPrimaryKey on Table {
   TextColumn get id => text().clientDefault(newId)();
@@ -68,6 +84,12 @@ class Exercises extends Table with UuidPrimaryKey, Timestamps {
   /// Note personnelle (réglage de la machine…), attachée à l'exercice où
   /// qu'on la saisisse : fiche, séance, modèle (EX-11). *Ajoutée en v4.*
   TextColumn get note => text().nullable()();
+
+  /// Muscles travaillés en plus du groupe musculaire principal (EX-04, EX-09,
+  /// RG-17). *Ajoutée en v5.*
+  TextColumn get secondaryMuscles => text()
+      .map(const BodyPartListConverter())
+      .withDefault(const Constant(''))();
 
   /// `false` pour les exercices livrés avec l'app.
   BoolColumn get isCustom => boolean().withDefault(const Constant(false))();

@@ -9,3 +9,10 @@ String formatDuration(int totalSeconds) {
   }
   return '$minutes:$seconds';
 }
+
+/// Durée d'une séance, à la minute : `'52 min'`, `'1 h 05'`.
+String formatMinutes(Duration duration) {
+  final minutes = duration.inMinutes;
+  if (minutes < 60) return '$minutes min';
+  return '${minutes ~/ 60} h ${(minutes % 60).toString().padLeft(2, '0')}';
+}

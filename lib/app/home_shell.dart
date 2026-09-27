@@ -37,6 +37,11 @@ class HomeShell extends StatelessWidget {
                 label: 'Exercices',
               ),
               NavigationDestination(
+                icon: Icon(Icons.insights_outlined),
+                selectedIcon: Icon(Icons.insights),
+                label: 'Stats',
+              ),
+              NavigationDestination(
                 icon: Icon(Icons.settings_outlined),
                 selectedIcon: Icon(Icons.settings),
                 label: 'Réglages',

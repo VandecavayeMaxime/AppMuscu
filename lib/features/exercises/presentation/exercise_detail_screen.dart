@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/seed/exercise_media.dart';
 import '../../../core/utils/duration_format.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/section_title.dart';
@@ -13,6 +14,7 @@ import '../../workout/domain/set_numbering.dart';
 import '../../workout/presentation/set_format.dart';
 import '../data/exercise_repository.dart';
 import '../domain/exercise_enums.dart';
+import 'exercise_media_view.dart';
 import 'exercise_providers.dart';
 import 'exercise_note.dart';
 
@@ -165,23 +167,9 @@ class _AboutTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 16),
       children: [
-        // Image générique, en attendant les illustrations des mouvements.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                Icons.fitness_center,
-                size: 72,
-                color: theme.colorScheme.outline,
-              ),
-            ),
-          ),
+          child: ExerciseMediaView(builtInExerciseMedia[exercise.id]),
         ),
         const SizedBox(height: 8),
         ListTile(

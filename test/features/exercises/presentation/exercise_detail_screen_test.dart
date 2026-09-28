@@ -67,6 +67,7 @@ void main() {
 
       await tester.tap(find.text('lb'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Réglage global'));
       await tester.tap(find.text('Réglage global'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('2:30'));

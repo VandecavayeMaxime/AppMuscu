@@ -35,3 +35,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true  # embarque la police des icônes Material (Icons.xxx)
+  assets:
+    - assets/exercises/images/

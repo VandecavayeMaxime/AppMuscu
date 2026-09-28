@@ -551,7 +551,9 @@ void main() {
 
     await choose('Groupe musculaire', 'Dorsaux');
     expect(find.text('Squat (Barbell)'), findsNothing);
-    expect(find.text('Pull-Up'), findsOneWidget);
+    // Liste triée par ordre alphabétique : seul le début est construit
+    // (liste paresseuse), d'où une vérification sur le tout premier.
+    expect(find.text('Archer Pull Ups'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Nouvel exercice'));
     await tester.pumpAndSettle();

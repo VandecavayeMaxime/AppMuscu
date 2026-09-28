@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/seed/exercise_media.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../domain/exercise_enums.dart';
 import 'exercise_providers.dart';
@@ -162,9 +163,13 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
 
   Widget _tile(Exercise exercise) {
     final ownerPath = _ownerPath;
+    final imageAsset = builtInExerciseMedia[exercise.id]?.imageAsset;
     return ListTile(
       leading: CircleAvatar(
-        child: Text(exercise.name.characters.first.toUpperCase()),
+        backgroundImage: imageAsset == null ? null : AssetImage(imageAsset),
+        child: imageAsset != null
+            ? null
+            : Text(exercise.name.characters.first.toUpperCase()),
       ),
       title: Text(exercise.name),
       subtitle: Text(

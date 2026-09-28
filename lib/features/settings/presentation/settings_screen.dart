@@ -79,6 +79,11 @@ class SettingsScreen extends ConsumerWidget {
                   repository.setTheme(selection.single),
             ),
           ),
+          const SectionTitle('À propos'),
+          const ListTile(
+            title: Text('Illustrations des exercices'),
+            subtitle: Text('Exercise data by RepDB (repdb.co)'),
+          ),
         ],
       ),
     );

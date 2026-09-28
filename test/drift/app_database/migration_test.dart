@@ -18,6 +18,7 @@ import 'generated/schema_v8.dart' as v8;
 import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v12.dart' as v12;
+import 'generated/schema_v13.dart' as v13;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -568,6 +569,49 @@ void main() {
         expect(rows[rearDeltFlyId]!.secondaryMuscles, 'trapeziusLower');
         expect(rows[customId]!.bodyPart, 'trapeziusUpper');
         expect(rows[customId]!.secondaryMuscles, 'shoulders,trapeziusUpper');
+      },
+    );
+  });
+
+  test('v12 → v13 : la bibliothèque reçoit 445 exercices de plus (D30), sans '
+      'toucher aux exercices déjà en base', () async {
+    v12.ExercisesData custom() => v12.ExercisesData(
+      id: 'custom-hip-thrust',
+      createdAt: 0,
+      updatedAt: 0,
+      name: 'Hip thrust perso',
+      nameNormalized: 'hip thrust perso',
+      equipment: 'barbell',
+      bodyPart: 'glutes',
+      trackingType: 'weightReps',
+      weightUnit: 'kg',
+      secondaryMuscles: 'hamstrings',
+      isCustom: 1,
+    );
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 12,
+      newVersion: 13,
+      createOld: v12.DatabaseAtV12.new,
+      createNew: v13.DatabaseAtV13.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch.insertAll(oldDb.exercises, [custom()]);
+      },
+      validateItems: (newDb) async {
+        final all = await newDb.select(newDb.exercises).get();
+        // L'exercice perso déjà en base + les 445 nouveaux (la base de
+        // test part vide : les exercices déjà intégrés ne sont insérés
+        // qu'à la création d'une vraie base, via `onCreate`).
+        expect(all, hasLength(1 + 445));
+        expect(
+          all.where((e) => e.id == 'custom-hip-thrust').single.name,
+          'Hip thrust perso',
+        );
+        final names = all.map((e) => e.name).toSet();
+        expect(names, contains('Sumo Deadlift'));
+        expect(names, contains('Front Squat'));
+        expect(names, contains('Dead Bug'));
       },
     );
   });

@@ -94,8 +94,12 @@ Future<Finder> findExerciseTile(WidgetTester tester, String name) async {
   // liste à chaque fois, jusqu'à le trouver.
   await tester.scrollUntilVisible(
     tile,
-    200,
+    1000,
     scrollable: _exerciseListScrollable(),
+    // Pas par défaut (50 × 200 px) trop court pour une bibliothèque de plus
+    // de 500 exercices (D30) : grand pas plutôt que buter sur le nombre
+    // maximal d'essais, sinon chaque recherche devient très lente.
+    maxScrolls: 100,
   );
   return tile;
 }

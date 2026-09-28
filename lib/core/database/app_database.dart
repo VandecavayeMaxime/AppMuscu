@@ -36,7 +36,7 @@ class AppDatabase extends _$AppDatabase {
   /// 2. `dart run build_runner build` puis `dart run drift_dev make-migrations` ;
   /// 3. écrire l'étape `fromXToY` ci-dessous et compléter test/drift/.
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -204,6 +204,12 @@ class AppDatabase extends _$AppDatabase {
             variables: [Variable(id)],
           );
         }
+      },
+      // v13 : bibliothèque très largement élargie (D30) — 445 exercices de
+      // plus, à partir du jeu de données ouvert RepDB (illustrations
+      // cohérentes, voir docs/ARCHITECTURE.md §4). Aucune colonne ajoutée.
+      from12To13: (m, schema) async {
+        await batch((b) => b.insertAll(exercises, builtInExercisesAddedInV13));
       },
     ),
     // À chaque ouverture : SQLite n'applique les clés étrangères que si on le demande.

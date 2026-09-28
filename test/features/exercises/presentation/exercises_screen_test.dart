@@ -31,7 +31,7 @@ void main() {
   Finder nameField() => find.widgetWithText(TextFormField, 'Nom');
 
   group('liste (EX-02, EX-03)', () {
-    testApp('affiche les 83 exercices de base par ordre alphabétique', (
+    testApp('affiche les 528 exercices de base par ordre alphabétique', (
       tester,
     ) async {
       await openExercisesTab(tester);
@@ -42,8 +42,13 @@ void main() {
         tester.getTopLeft(find.text('Ab Wheel Rollout')).dy,
         lessThan(tester.getTopLeft(find.text('Arnold Press')).dy),
       );
-      // Seul « Ab Wheel Rollout » est abdos + autre.
-      expect(find.text('Abdos · Autre'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.widgetWithText(ListTile, 'Ab Wheel Rollout'),
+          matching: find.text('Abdos · Autre'),
+        ),
+        findsOneWidget,
+      );
       // Barre verticale toujours visible, pour voir où on en est.
       expect(
         tester.widget<Scrollbar>(find.byType(Scrollbar)).thumbVisibility,
@@ -57,9 +62,12 @@ void main() {
       await tester.enterText(find.byType(SearchBar), 'press');
       await tester.pumpAndSettle();
 
-      expect(find.byType(ListTile), findsNWidgets(11));
+      // Liste triée par ordre alphabétique : seul le début est construit
+      // (liste paresseuse), d'où des vérifications sur les tout premiers.
+      expect(find.text('Arnold Press'), findsOneWidget);
       expect(find.text('Bench Press (Barbell)'), findsOneWidget);
-      expect(find.text('Overhead Press (Barbell)'), findsOneWidget);
+      // Retiré par le filtre : ne contient pas « press ».
+      expect(find.text('Ab Wheel Rollout'), findsNothing);
     });
 
     testApp('affiche un message quand rien ne correspond', (tester) async {
@@ -81,8 +89,9 @@ void main() {
       await tester.tap(find.text('Dorsaux'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(ListTile), findsNWidgets(8));
-      expect(find.text('Pull-Up'), findsOneWidget);
+      // Liste triée par ordre alphabétique : seul le début est construit
+      // (liste paresseuse), d'où une vérification sur le tout premier.
+      expect(find.text('Archer Pull Ups'), findsOneWidget);
       // Retiré par le filtre : pas un exercice de dos.
       expect(find.text('Ab Wheel Rollout'), findsNothing);
 

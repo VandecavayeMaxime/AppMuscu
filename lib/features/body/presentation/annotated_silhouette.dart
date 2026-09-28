@@ -43,16 +43,30 @@ _circumferenceAnchors() {
   };
 }
 
+/// Les tours qui ont un tracé musculaire dédié (donc une zone tactile
+/// directement sur le dessin) : cou, hanches et fesses n'en ont pas (voir
+/// `_circumferenceAnchors`), seule leur étiquette reste tactile pour eux.
+const _bodyPartOf = {
+  BodyMeasurementField.chest: BodyPart.chest,
+  BodyMeasurementField.arm: BodyPart.biceps,
+  BodyMeasurementField.forearm: BodyPart.forearms,
+  BodyMeasurementField.waist: BodyPart.abs,
+  BodyMeasurementField.thigh: BodyPart.quads,
+  BodyMeasurementField.calf: BodyPart.calves,
+};
+
 /// Une silhouette neutre (aucun muscle coloré), annotée des tours déjà
 /// saisis, chacun à hauteur de sa partie du corps (SA-07). Remplace la
 /// silhouette d'origine, jugée moins lisible qu'une liste simple pour les
 /// autres mesures (D26) — seuls les tours en profitent, avec la silhouette
-/// déjà dessinée pour la carte des muscles.
+/// déjà dessinée pour la carte des muscles. Toucher directement le dessin
+/// marche aussi pour les tours qui ont un tracé musculaire (D31).
 class AnnotatedBodySilhouette extends StatelessWidget {
   const AnnotatedBodySilhouette({
     super.key,
     required this.values,
     required this.deltas,
+    required this.selected,
     required this.onTap,
   });
 
@@ -61,7 +75,10 @@ class AnnotatedBodySilhouette extends StatelessWidget {
   final Map<BodyMeasurementField, double> values;
   final Map<BodyMeasurementField, MeasurementDelta?> deltas;
 
-  /// Toucher une étiquette ouvre la page de ce tour (SA-08).
+  /// Le tour actuellement affiché dans le graphique, s'il y en a un (D31).
+  final BodyMeasurementField? selected;
+
+  /// Toucher une étiquette ou une zone du dessin sélectionne ce tour (D31).
   final ValueChanged<BodyMeasurementField> onTap;
 
   @override
@@ -118,6 +135,7 @@ class AnnotatedBodySilhouette extends StatelessWidget {
                           delta: deltas[field],
                           leaderOnRight: entries == left,
                           lineHeight: lineHeight,
+                          selected: field == selected,
                         ),
                       ),
                     ),
@@ -132,7 +150,20 @@ class AnnotatedBodySilhouette extends StatelessWidget {
             SizedBox(
               width: silhouetteWidth,
               height: height,
-              child: const BodySilhouette(view: BodyView.front, load: {}),
+              child: BodySilhouette(
+                view: BodyView.front,
+                load: const {},
+                highlighted: _bodyPartOf[selected],
+                onTap: (part) {
+                  for (final MapEntry(key: field, value: bodyPart)
+                      in _bodyPartOf.entries) {
+                    if (bodyPart == part && values.containsKey(field)) {
+                      onTap(field);
+                      return;
+                    }
+                  }
+                },
+              ),
             ),
             side(right),
           ],
@@ -153,6 +184,7 @@ class _CircumferenceLabel extends StatelessWidget {
     required this.delta,
     required this.leaderOnRight,
     required this.lineHeight,
+    required this.selected,
   });
 
   final BodyMeasurementField field;
@@ -161,12 +193,18 @@ class _CircumferenceLabel extends StatelessWidget {
   final bool leaderOnRight;
   final double lineHeight;
 
+  /// `true` si c'est le tour actuellement affiché dans le graphique (D31).
+  final bool selected;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final label = Text(
       '${field.label} ${formatNumber(value)}',
-      style: theme.textTheme.labelMedium,
+      style: theme.textTheme.labelMedium?.copyWith(
+        color: selected ? theme.colorScheme.primary : null,
+        fontWeight: selected ? FontWeight.bold : null,
+      ),
       textAlign: leaderOnRight ? TextAlign.right : TextAlign.left,
     );
     final leader = Expanded(

@@ -40,7 +40,13 @@ GoRouter _createRouter() => GoRouter(
       builder: (context, state) =>
           WorkoutSummaryScreen(workoutId: state.pathParameters['workoutId']!),
     ),
-    // Les 4 onglets. Chaque branche garde sa propre pile d'écrans :
+    // Réglages : pas un onglet (D32), une icône en haut des 3 autres y mène,
+    // donc hors des branches, comme les autres écrans plein écran ci-dessus.
+    GoRoute(
+      path: '/reglages',
+      builder: (context, state) => const SettingsScreen(),
+    ),
+    // Les 3 onglets. Chaque branche garde sa propre pile d'écrans :
     // on retrouve l'onglet dans l'état où on l'a laissé.
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
@@ -128,14 +134,6 @@ GoRouter _createRouter() => GoRouter(
                   ),
                 ),
               ],
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/reglages',
-              builder: (context, state) => const SettingsScreen(),
             ),
           ],
         ),

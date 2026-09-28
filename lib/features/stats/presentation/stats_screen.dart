@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/widgets/settings_button.dart';
 import '../../body/presentation/body_tab.dart';
 import 'muscles_tab.dart';
 import 'sessions_tab.dart';
@@ -15,6 +16,7 @@ class StatsScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Stats'),
+          actions: const [SettingsButton()],
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Séances'),

@@ -6,12 +6,13 @@ import '../../helpers/test_database.dart';
 
 void main() {
   Future<void> openSettings(WidgetTester tester) async {
-    await tester.tap(tab('Réglages'));
+    // Pas un onglet du bas (D32) : une icône en haut de chacun des 3 autres.
+    await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
   }
 
   Future<void> backToWorkoutTab(WidgetTester tester) async {
-    await tester.tap(tab('Séance'));
+    await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
   }
 

@@ -5,6 +5,8 @@ import '../features/workout/presentation/active_workout_bar.dart';
 
 /// Écran principal : l'onglet actif au-dessus, la barre d'onglets en bas et,
 /// juste au-dessus d'elle, la séance réduite s'il y en a une (WO-20).
+/// Réglages n'a pas de 4e onglet ici (D32) : une icône en haut à droite des 3
+/// autres onglets (`SettingsButton`) y mène aussi vite.
 class HomeShell extends StatelessWidget {
   const HomeShell({super.key, required this.navigationShell});
 
@@ -40,11 +42,6 @@ class HomeShell extends StatelessWidget {
                 icon: Icon(Icons.insights_outlined),
                 selectedIcon: Icon(Icons.insights),
                 label: 'Stats',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings),
-                label: 'Réglages',
               ),
             ],
           ),

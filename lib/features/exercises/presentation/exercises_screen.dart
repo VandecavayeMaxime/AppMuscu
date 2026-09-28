@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/seed/exercise_media.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/settings_button.dart';
 import '../domain/exercise_enums.dart';
 import 'exercise_providers.dart';
 
@@ -58,7 +59,10 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
 
     return Scaffold(
       appBar: ownerPath == null
-          ? AppBar(title: const Text('Exercices'))
+          ? AppBar(
+              title: const Text('Exercices'),
+              actions: const [SettingsButton()],
+            )
           : AppBar(
               title: const Text('Ajouter des exercices'),
               actions: [

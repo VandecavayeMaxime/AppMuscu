@@ -7,7 +7,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/utils/date_format.dart';
 import '../../../core/utils/weight_format.dart';
 import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/section_title.dart';
+import '../../stats/domain/chart_point.dart';
 import '../../stats/domain/stats_period.dart';
 import '../../stats/presentation/line_chart.dart';
 import '../domain/body_measurement_field.dart';
@@ -18,9 +18,11 @@ import 'body_providers.dart';
 /// Périodes de la courbe du poids (SA-07).
 const _periods = [StatsPeriod.month1, StatsPeriod.months3, StatsPeriod.year1];
 
-/// Sous-onglet « Corps » (SA-07) : poids (courbe lissée, RG-20), masse
-/// grasse, masse musculaire, puis les tours, chacun avec son écart (RG-21).
-/// Toucher une mesure ouvre sa page (SA-08).
+/// Sous-onglet « Corps » (SA-07) : les tours d'abord (silhouette agrandie,
+/// tactile directement sur le dessin pour ceux qui ont un tracé musculaire,
+/// D31), puis masse grasse et masse musculaire, puis le graphique — celui du
+/// poids par défaut, ou celui du tour qu'on vient de toucher. Toucher le
+/// graphique ouvre sa page (SA-08).
 class BodyTab extends ConsumerStatefulWidget {
   const BodyTab({super.key});
 
@@ -30,6 +32,10 @@ class BodyTab extends ConsumerStatefulWidget {
 
 class _BodyTabState extends ConsumerState<BodyTab> {
   var _period = StatsPeriod.months3;
+
+  /// Le champ affiché dans le graphique (D31) ; `null` = pas encore touché,
+  /// donc le poids par défaut (ou le premier champ qui a une valeur).
+  BodyMeasurementField? _selectedField;
 
   @override
   Widget build(BuildContext context) {
@@ -69,14 +75,30 @@ class _BodyTabState extends ConsumerState<BodyTab> {
   );
 
   Widget _content(List<BodyMeasurement> rows) {
-    final weightPoints = pointsOf(rows, BodyMeasurementField.weight);
     final fatPoints = pointsOf(rows, BodyMeasurementField.bodyFat);
     final muscleMassPoints = pointsOf(rows, BodyMeasurementField.muscleMass);
+    final circumferenceValues = _circumferenceValues(rows);
+    final field = _effectiveField(rows, circumferenceValues);
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 16),
       children: [
-        if (weightPoints.isNotEmpty) _weightSection(weightPoints),
+        if (circumferenceValues.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: AnnotatedBodySilhouette(
+              values: circumferenceValues,
+              deltas: {
+                for (final f in BodyMeasurementField.circumferences)
+                  if (pointsOf(rows, f) case final points
+                      when points.isNotEmpty)
+                    f: measurementDelta(points, useThirtyDayReference: false),
+              },
+              selected: field,
+              onTap: (f) => setState(() => _selectedField = f),
+            ),
+          ),
+        ],
         if (fatPoints.isNotEmpty)
           _SummaryRow(
             field: BodyMeasurementField.bodyFat,
@@ -89,26 +111,7 @@ class _BodyTabState extends ConsumerState<BodyTab> {
             points: muscleMassPoints,
             useThirtyDayReference: true,
           ),
-        if (_circumferenceValues(rows) case final values
-            when values.isNotEmpty) ...[
-          const SectionTitle('Tours'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: AnnotatedBodySilhouette(
-              values: values,
-              deltas: {
-                for (final field in BodyMeasurementField.circumferences)
-                  if (pointsOf(rows, field) case final points
-                      when points.isNotEmpty)
-                    field: measurementDelta(
-                      points,
-                      useThirtyDayReference: false,
-                    ),
-              },
-              onTap: (field) => context.push('/stats/mesure/${field.name}'),
-            ),
-          ),
-        ],
+        if (field != null) _fieldSection(rows, field),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: Center(
@@ -123,6 +126,27 @@ class _BodyTabState extends ConsumerState<BodyTab> {
     );
   }
 
+  /// Le tour qu'on vient de toucher s'il a encore une valeur, sinon le poids,
+  /// sinon le premier champ qui en a une (D31).
+  BodyMeasurementField? _effectiveField(
+    List<BodyMeasurement> rows,
+    Map<BodyMeasurementField, double> circumferenceValues,
+  ) {
+    final selected = _selectedField;
+    if (selected != null && pointsOf(rows, selected).isNotEmpty) {
+      return selected;
+    }
+    for (final f in [
+      BodyMeasurementField.weight,
+      BodyMeasurementField.bodyFat,
+      BodyMeasurementField.muscleMass,
+      ...BodyMeasurementField.circumferences,
+    ]) {
+      if (pointsOf(rows, f).isNotEmpty) return f;
+    }
+    return null;
+  }
+
   /// Dernière valeur de chaque tour déjà saisi (SA-07).
   Map<BodyMeasurementField, double> _circumferenceValues(
     List<BodyMeasurement> rows,
@@ -132,18 +156,30 @@ class _BodyTabState extends ConsumerState<BodyTab> {
         field: points.last.value,
   };
 
-  Widget _weightSection(List<MeasurementPoint> points) {
+  /// Le graphique du champ affiché (le poids par défaut, ou le tour qu'on
+  /// vient de toucher, D31) : titre, dernière valeur, écart, courbe et
+  /// période. Toucher ouvre sa page (SA-08), comme les autres mesures.
+  Widget _fieldSection(List<BodyMeasurement> rows, BodyMeasurementField field) {
     final theme = Theme.of(context);
-    final smoothed = smoothedWeight(points);
-    final delta = measurementDelta(points, useThirtyDayReference: true);
+    final points = pointsOf(rows, field);
+    final isCircumference = BodyMeasurementField.circumferences.contains(field);
+    final delta = measurementDelta(
+      points,
+      useThirtyDayReference: !isCircumference,
+    );
     final start = _period.start(clock.now());
+    // Le lissage (RG-20) ne concerne que le poids : les tours et la
+    // composition du corps sont saisis trop rarement pour ça.
+    final smoothed = field == BodyMeasurementField.weight
+        ? smoothedWeight(points)
+        : [for (final p in points) ChartPoint(p.date, p.value)];
     final chartPoints = [
       for (final point in smoothed)
         if (start == null || !point.date.isBefore(start)) point,
     ];
 
     return InkWell(
-      onTap: () => context.push('/stats/mesure/weight'),
+      onTap: () => context.push('/stats/mesure/${field.name}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
@@ -152,14 +188,14 @@ class _BodyTabState extends ConsumerState<BodyTab> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Poids', style: theme.textTheme.titleMedium),
+                Text(field.label, style: theme.textTheme.titleMedium),
                 Text(
-                  '${formatNumber(points.last.value)} kg',
+                  '${formatNumber(points.last.value)} ${field.unit}',
                   style: theme.textTheme.titleMedium,
                 ),
               ],
             ),
-            if (delta != null) _DeltaText(delta, 'kg'),
+            if (delta != null) _DeltaText(delta, field.unit),
             const SizedBox(height: 8),
             if (chartPoints.isNotEmpty)
               LineChart(points: chartPoints, axisLabel: formatNumber),

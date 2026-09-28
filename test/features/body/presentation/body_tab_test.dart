@@ -1,3 +1,5 @@
+import 'package:app_muscu/core/database/app_database.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -61,28 +63,54 @@ void main() {
     },
   );
 
+  testApp('ajoute un tour, le voit étiqueté sur la silhouette et dans le '
+      'graphique, et l\'ouvre (SA-07, SA-08, D31)', (tester) async {
+    await openBody(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Mesure'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Taille (cm)'), '82');
+    await tester.tap(find.text('Enregistrer'));
+    await tester.pumpAndSettle();
+
+    // L'étiquette sur la silhouette ("Taille 82") et le titre du
+    // graphique ("Taille"), seule mesure saisie donc déjà affichée.
+    expect(find.textContaining('Taille'), findsWidgets);
+
+    // Toucher le graphique (pas l'étiquette, qui ne fait que sélectionner
+    // une zone, D31) ouvre sa page.
+    await tester.tap(find.text('82 cm'));
+    await tester.pumpAndSettle();
+    expect(find.text('Taille'), findsWidgets); // titre de la page
+    expect(find.text('82 cm'), findsOneWidget);
+  });
+
   testApp(
-    'ajoute un tour, le voit étiqueté sur la silhouette, et l\'ouvre (SA-07, '
-    'SA-08)',
+    'touche une autre zone de la silhouette : le graphique change (D31)',
+    setUp: (db) async {
+      await db
+          .into(db.bodyMeasurements)
+          .insert(
+            BodyMeasurementsCompanion.insert(
+              measuredAt: DateTime(2026, 8, 1),
+              waistCm: const Value(82),
+              neckCm: const Value(40),
+            ),
+          );
+    },
     (tester) async {
       await openBody(tester);
-      await tester.tap(find.widgetWithText(FilledButton, 'Mesure'));
-      await tester.pumpAndSettle();
 
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Taille (cm)'),
-        '82',
-      );
-      await tester.tap(find.text('Enregistrer'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Tours'), findsOneWidget);
-      expect(find.textContaining('Taille'), findsOneWidget);
+      // Le cou (premier tour de la liste, BodyMeasurementField.circumferences)
+      // est affiché par défaut.
+      expect(find.text('40 cm'), findsOneWidget);
+      expect(find.text('82 cm'), findsNothing);
 
       await tester.tap(find.textContaining('Taille'));
       await tester.pumpAndSettle();
-      expect(find.text('Taille'), findsWidgets); // titre de la page
+
       expect(find.text('82 cm'), findsOneWidget);
+      expect(find.text('40 cm'), findsNothing);
     },
   );
 

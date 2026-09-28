@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/widgets/settings_button.dart';
 import '../../templates/presentation/template_list.dart';
 
 /// Onglet « Séance » : les modèles, d'où démarre toute séance (WO-01). La
@@ -11,7 +12,10 @@ class WorkoutHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Séance')),
+      appBar: AppBar(
+        title: const Text('Séance'),
+        actions: const [SettingsButton()],
+      ),
       body: const TemplateList(),
     );
   }

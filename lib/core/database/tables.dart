@@ -193,6 +193,36 @@ class WorkoutSets extends Table with UuidPrimaryKey {
   IntColumn get plannedDurationSeconds => integer().nullable()();
 }
 
+// ─── Mesures ─────────────────────────────────────────────────────────────────
+
+/// Une mesure par jour (RG-22) : tous les champs sont facultatifs, mais il
+/// en faut au moins un. En saisir une autre le même jour remplace seulement
+/// les champs fournis (les autres restent tels quels). *Ajoutée en v9.*
+@TableIndex.sql(
+  'CREATE UNIQUE INDEX body_measurements_day ON body_measurements '
+  '(measured_at)',
+)
+class BodyMeasurements extends Table with UuidPrimaryKey {
+  DateTimeColumn get measuredAt => dateTime()();
+
+  RealColumn get weightKg => real().nullable()();
+  RealColumn get bodyFatPercent => real().nullable()();
+  RealColumn get muscleMassKg => real().nullable()();
+  RealColumn get neckCm => real().nullable()();
+  RealColumn get chestCm => real().nullable()();
+  RealColumn get armCm => real().nullable()();
+
+  /// *Ajoutée en v10.*
+  RealColumn get forearmCm => real().nullable()();
+  RealColumn get waistCm => real().nullable()();
+  RealColumn get hipsCm => real().nullable()();
+
+  /// *Ajoutée en v10.*
+  RealColumn get glutesCm => real().nullable()();
+  RealColumn get thighCm => real().nullable()();
+  RealColumn get calfCm => real().nullable()();
+}
+
 // ─── Réglages ────────────────────────────────────────────────────────────────
 
 /// Réglages (ST-*) et état du minuteur de repos, sous forme clé → valeur.

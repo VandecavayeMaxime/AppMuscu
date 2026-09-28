@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/body/domain/body_measurement_field.dart';
+import '../features/body/presentation/measurement_detail_screen.dart';
+import '../features/body/presentation/new_measurement_screen.dart';
 import '../features/exercises/presentation/exercise_detail_screen.dart';
 import '../features/exercises/presentation/exercise_form_screen.dart';
 import '../features/exercises/presentation/exercises_screen.dart';
@@ -109,6 +112,19 @@ GoRouter _createRouter() => GoRouter(
                   builder: (context, state) => WorkoutSummaryScreen(
                     workoutId: state.pathParameters['workoutId']!,
                     readOnly: true,
+                  ),
+                ),
+                // Nouvelle mesure (SA-06) et page d'une mesure (SA-08).
+                GoRoute(
+                  path: 'mesure/nouvelle',
+                  builder: (context, state) => const NewMeasurementScreen(),
+                ),
+                GoRoute(
+                  path: 'mesure/:field',
+                  builder: (context, state) => MeasurementDetailScreen(
+                    field: BodyMeasurementField.values.byName(
+                      state.pathParameters['field']!,
+                    ),
                   ),
                 ),
               ],

@@ -7,6 +7,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/reorder_list.dart';
+import '../../../core/widgets/swipe_delete_background.dart';
 import '../../../core/widgets/text_input_dialog.dart';
 import '../../exercises/presentation/exercise_note.dart';
 import '../../rest_timer/presentation/rest_countdown.dart';
@@ -18,6 +19,9 @@ import '../domain/set_rules.dart';
 import 'elapsed_time.dart';
 import 'set_row.dart';
 import 'workout_providers.dart';
+
+/// Choix face à des séries remplies mais pas validées en terminant (WO-17).
+enum _ReadySetsChoice { complete, discard, abandon }
 
 /// Écran « Séance en cours » (docs/SPEC.md §5.2), en plein écran.
 class ActiveWorkoutScreen extends ConsumerStatefulWidget {
@@ -296,7 +300,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
 
     final bool validateReadySets;
     if (ready > 0) {
-      final choice = await showDialog<bool>(
+      final choice = await showDialog<_ReadySetsChoice>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Séries inachevées'),
@@ -310,21 +314,38 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Annuler'),
             ),
-            // Jeter n'a de sens que s'il reste des séries validées (RG-08).
+            // Jeter les séries remplies mais pas validées n'a de sens que
+            // s'il reste des séries déjà validées (RG-08) ; sinon il n'y
+            // aurait plus rien à enregistrer, donc plutôt abandonner (sans
+            // rien sauvegarder) que terminer une séance vide.
             if (completed > 0)
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () =>
+                    Navigator.pop(context, _ReadySetsChoice.discard),
                 child: const Text('Jeter'),
+              )
+            else
+              TextButton(
+                onPressed: () =>
+                    Navigator.pop(context, _ReadySetsChoice.abandon),
+                child: const Text('Abandonner'),
               ),
             TextButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () =>
+                  Navigator.pop(context, _ReadySetsChoice.complete),
               child: const Text('Compléter'),
             ),
           ],
         ),
       );
       if (choice == null) return;
-      validateReadySets = choice;
+      if (choice == _ReadySetsChoice.abandon) {
+        await ref.read(restTimerControllerProvider).stop();
+        await repository.discardWorkout(workoutId);
+        if (context.mounted) _leave(context);
+        return;
+      }
+      validateReadySets = choice == _ReadySetsChoice.complete;
     } else {
       final confirmed = await showConfirmDialog(
         context,
@@ -414,6 +435,7 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
     ];
     final previous =
         ref.watch(previousSetsProvider(exercise.id)).value ?? const [];
+    final placeholders = placeholdersOfAll(sets, previous);
     final labels = setLabels([for (final set in sets) set.setType]);
     final headerStyle = theme.textTheme.labelMedium?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
@@ -499,6 +521,7 @@ class _ExerciseSectionState extends ConsumerState<_ExerciseSection> {
                   label: labels[index],
                   exercise: exercise,
                   previous: index < previous.length ? previous[index] : null,
+                  placeholders: placeholders[index],
                 ),
                 RestLine(
                   key: set.id == widget.runningSetId

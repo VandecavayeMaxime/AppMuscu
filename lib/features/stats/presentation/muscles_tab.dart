@@ -253,7 +253,6 @@ class _MusclesTabState extends ConsumerState<MusclesTab>
             _MuscleRow(
               part: entry.key,
               value: entry.value,
-              fraction: entry.value / ranked.first.value,
               highlighted: _highlighted == entry.key,
               onTap: () => _toggleHighlight(entry.key),
             ),
@@ -297,7 +296,7 @@ class _WeekHeader extends StatelessWidget {
   }
 }
 
-/// Légende des 3 repères (SA-04) : insuffisant, correct à optimal, élevé.
+/// Légende des 3 repères (SA-04) : bas, optimal, élevé.
 class _Legend extends StatelessWidget {
   const _Legend();
 
@@ -324,9 +323,9 @@ class _Legend extends StatelessWidget {
         spacing: 16,
         runSpacing: 4,
         children: [
-          item(lightRed, 'Insuffisant'),
-          item(mediumRed, 'Correct'),
-          item(darkRed, 'Élevé'),
+          item(lowColor, 'Bas'),
+          item(optimalColor, 'Optimal'),
+          item(highColor, 'Élevé'),
         ],
       ),
     );
@@ -374,20 +373,20 @@ class _SilhouetteColumn extends StatelessWidget {
   }
 }
 
-/// Une ligne de muscle (SA-05) : nom, nombre de séries et une barre
-/// proportionnelle en fond, teintée selon le même repère que la silhouette.
+/// Une ligne de muscle (SA-05) : nom et séries à gauche, la position sur les
+/// 3 zones de repère (`_ZoneBar`, RG-23) à droite, sur la même ligne. Un
+/// fond teinté (même repère que la silhouette) signale le muscle mis en
+/// avant.
 class _MuscleRow extends StatelessWidget {
   const _MuscleRow({
     required this.part,
     required this.value,
-    required this.fraction,
     required this.highlighted,
     required this.onTap,
   });
 
   final BodyPart part;
   final double value;
-  final double fraction;
   final bool highlighted;
   final VoidCallback onTap;
 
@@ -399,25 +398,144 @@ class _MuscleRow extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: fraction.clamp(0, 1),
-              child: ColoredBox(
-                color: fill.withValues(alpha: highlighted ? 0.55 : 0.3),
-              ),
+            child: ColoredBox(
+              color: fill.withValues(alpha: highlighted ? 0.55 : 0.3),
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(child: Text(part.label)),
-                Text(formatNumber(value)),
-              ],
+            child: SizedBox(
+              height: 32,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(flex: 3, child: Text(part.label)),
+                  SizedBox(
+                    width: 32,
+                    child: Text(
+                      formatNumber(value),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 5,
+                    child: _ZoneBar(
+                      landmark: landmarkFor(part),
+                      progress: muscleZoneProgress(part, value),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Échelle à 3 tronçons égaux (insuffisant, correct, élevé, RG-23) : un
+/// trait fin à hauteur du nom et de la valeur (aligné avec le reste de la
+/// ligne), les seuils chiffrés (`landmark`, en gras) au-dessus, et un point
+/// plein à la position du muscle sur l'échelle 0..3 de `muscleZoneProgress`
+/// (chaque tronçon correspond à un tiers de cette échelle, pas à un nombre
+/// de séries : les repères diffèrent d'un muscle à l'autre mais l'échelle
+/// garde toujours la même taille de zone).
+class _ZoneBar extends StatelessWidget {
+  const _ZoneBar({required this.landmark, required this.progress});
+
+  final VolumeLandmark landmark;
+  final double progress;
+
+  static const _lineHeight = 4.0;
+  static const _dotSize = 10.0;
+  static const _labelHeight = 14.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final marker = (progress / 3).clamp(0.0, 1.0);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final height = constraints.maxHeight;
+        final lineTop = height / 2 - _lineHeight / 2;
+
+        Widget boundaryLabel(double fraction, int value) => Positioned(
+          left: (width * fraction - 10).clamp(0.0, width - 20),
+          top: 0,
+          child: SizedBox(
+            width: 20,
+            height: _labelHeight,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+
+        return SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                top: lineTop,
+                height: _lineHeight,
+                // Sans stretch, un DecoratedBox sans enfant se réduit à
+                // hauteur 0 (RenderProxyBox sans enfant = constraints.smallest).
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: lowColor),
+                      ),
+                    ),
+                    const SizedBox(width: 1),
+                    Expanded(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: optimalColor),
+                      ),
+                    ),
+                    const SizedBox(width: 1),
+                    Expanded(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: highColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              boundaryLabel(1 / 3, landmark.low),
+              boundaryLabel(2 / 3, landmark.high),
+              Positioned(
+                left: (width * marker - _dotSize / 2).clamp(
+                  0.0,
+                  width - _dotSize,
+                ),
+                top: lineTop + _lineHeight / 2 - _dotSize / 2,
+                width: _dotSize,
+                height: _dotSize,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

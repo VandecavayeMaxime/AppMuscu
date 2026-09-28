@@ -23,10 +23,13 @@ enum Equipment {
 
 /// Groupe musculaire principal. *Découpage affiné en v6 (D20) : « Dos »,
 /// « Abdos » et « Quadriceps » sont chacun devenus plusieurs valeurs plus
-/// précises ; voir la migration `from5To6` pour les anciennes séances.*
+/// précises ; voir la migration `from5To6` pour les anciennes séances.
+/// Pareil en v12 (D29) pour « Trapèzes », devenu haut et milieu/bas ; voir
+/// `from11To12`.*
 enum BodyPart {
   chest('Pectoraux'),
-  trapezius('Trapèzes'),
+  trapeziusUpper('Trapèzes (haut)'),
+  trapeziusLower('Trapèzes (bas)'),
   lats('Dorsaux'),
   lowerBack('Lombaires'),
   shoulders('Épaules'),
@@ -56,7 +59,8 @@ enum BodyPart {
 /// principal n'en fait pas partie.
 const muscleMapBodyParts = [
   BodyPart.chest,
-  BodyPart.trapezius,
+  BodyPart.trapeziusUpper,
+  BodyPart.trapeziusLower,
   BodyPart.lats,
   BodyPart.lowerBack,
   BodyPart.shoulders,

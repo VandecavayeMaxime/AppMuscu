@@ -15,6 +15,9 @@ import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
 import 'generated/schema_v7.dart' as v7;
 import 'generated/schema_v8.dart' as v8;
+import 'generated/schema_v10.dart' as v10;
+import 'generated/schema_v11.dart' as v11;
+import 'generated/schema_v12.dart' as v12;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -447,6 +450,124 @@ void main() {
         // Un exercice perso ne fait pas partie de la bibliothèque : son nom
         // ne bouge pas.
         expect(rows[customId]!.name, 'Mon exercice perso');
+      },
+    );
+  });
+
+  test(
+    'v10 → v11 : Chest Dip et Tricep Dip passent en poids + reps (D28)',
+    () async {
+      v10.ExercisesData exercise(
+        String id, {
+        required String name,
+        String trackingType = 'reps',
+      }) => v10.ExercisesData(
+        id: id,
+        createdAt: 0,
+        updatedAt: 0,
+        name: name,
+        nameNormalized: name.toLowerCase(),
+        equipment: 'bodyweight',
+        bodyPart: 'chest',
+        trackingType: trackingType,
+        weightUnit: 'kg',
+        secondaryMuscles: '',
+        isCustom: 0,
+      );
+      const chestDipId = '5190e591-346d-4944-85aa-1204579521d0';
+      const tricepDipId = '5871b2cb-cb62-4433-af1d-69da2e1d3c4d';
+      const otherId = 'other-exercise';
+
+      await verifier.testWithDataIntegrity(
+        oldVersion: 10,
+        newVersion: 11,
+        createOld: v10.DatabaseAtV10.new,
+        createNew: v11.DatabaseAtV11.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insertAll(oldDb.exercises, [
+            exercise(chestDipId, name: 'Chest Dip'),
+            exercise(tricepDipId, name: 'Tricep Dip'),
+            // Un exercice « reps » qui n'est pas concerné ne bouge pas.
+            exercise(otherId, name: 'Push-Up'),
+          ]);
+        },
+        validateItems: (newDb) async {
+          final rows = {
+            for (final row in await newDb.select(newDb.exercises).get())
+              row.id: row,
+          };
+          expect(rows[chestDipId]!.trackingType, 'weightReps');
+          expect(rows[tricepDipId]!.trackingType, 'weightReps');
+          expect(rows[otherId]!.trackingType, 'reps');
+        },
+      );
+    },
+  );
+
+  test('v11 → v12 : Trapèzes scindé en haut et milieu/bas (D29)', () async {
+    v11.ExercisesData exercise(
+      String id, {
+      required String name,
+      String bodyPart = 'chest',
+      String secondaryMuscles = '',
+    }) => v11.ExercisesData(
+      id: id,
+      createdAt: 0,
+      updatedAt: 0,
+      name: name,
+      nameNormalized: name.toLowerCase(),
+      equipment: 'bodyweight',
+      bodyPart: bodyPart,
+      trackingType: 'weightReps',
+      weightUnit: 'kg',
+      secondaryMuscles: secondaryMuscles,
+      isCustom: 0,
+    );
+    const shrugId = 'f60801a4-8ec9-47bb-83ff-bbf9666388b7';
+    const facePullId = '75458925-1deb-4d8f-9e4d-acc867a239c3';
+    const rearDeltFlyId = 'b9a7bb05-91e6-4d93-a091-8ed7f960ef2b';
+    const customId = 'custom-exercise';
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 11,
+      newVersion: 12,
+      createOld: v11.DatabaseAtV11.new,
+      createNew: v12.DatabaseAtV12.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch.insertAll(oldDb.exercises, [
+          exercise(shrugId, name: 'Shrug (Dumbbell)', bodyPart: 'trapezius'),
+          exercise(
+            facePullId,
+            name: 'Face Pull (Cable)',
+            bodyPart: 'trapezius',
+          ),
+          exercise(
+            rearDeltFlyId,
+            name: 'Rear Delt Fly (Dumbbell)',
+            bodyPart: 'shoulders',
+            secondaryMuscles: 'trapezius',
+          ),
+          // Exercice perso : bascule par défaut vers le haut.
+          exercise(
+            customId,
+            name: 'Mon exercice perso',
+            bodyPart: 'trapezius',
+            secondaryMuscles: 'shoulders,trapezius',
+          ),
+        ]);
+      },
+      validateItems: (newDb) async {
+        final rows = {
+          for (final row in await newDb.select(newDb.exercises).get())
+            row.id: row,
+        };
+        expect(rows[shrugId]!.bodyPart, 'trapeziusUpper');
+        expect(rows[facePullId]!.bodyPart, 'trapeziusLower');
+        expect(rows[rearDeltFlyId]!.secondaryMuscles, 'trapeziusLower');
+        expect(rows[customId]!.bodyPart, 'trapeziusUpper');
+        expect(rows[customId]!.secondaryMuscles, 'shoulders,trapeziusUpper');
       },
     );
   });

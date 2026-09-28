@@ -78,6 +78,25 @@ Future<void> addWorkout(
   }
 }
 
+/// Ajoute une mesure datée de [day] (une seule par jour, RG-22) ; les champs
+/// non précisés restent vides.
+Future<void> addMeasurement(
+  AppDatabase db, {
+  required DateTime day,
+  double? weightKg,
+  double? bodyFatPercent,
+  double? muscleMassKg,
+}) => db
+    .into(db.bodyMeasurements)
+    .insert(
+      BodyMeasurementsCompanion.insert(
+        measuredAt: day,
+        weightKg: Value(weightKg),
+        bodyFatPercent: Value(bodyFatPercent),
+        muscleMassKg: Value(muscleMassKg),
+      ),
+    );
+
 /// Ajoute un modèle sans exercice : le démarrer donne une séance vide, à
 /// compléter avec « Ajouter des exercices ». (L'éditeur exige au moins un
 /// exercice, la base non : c'est un raccourci pour les tests.)

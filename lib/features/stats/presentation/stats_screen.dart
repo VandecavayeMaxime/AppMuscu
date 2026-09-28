@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../core/widgets/empty_state.dart';
+import '../../body/presentation/body_tab.dart';
 import 'muscles_tab.dart';
 import 'sessions_tab.dart';
 
@@ -27,16 +27,7 @@ class StatsScreen extends StatelessWidget {
         // à changer de semaine (SA-04), les deux gestes se gênaient.
         body: const TabBarView(
           physics: NeverScrollableScrollPhysics(),
-          children: [
-            SessionsTab(),
-            MusclesTab(),
-            // Étape suivante du jalon M8.
-            EmptyState(
-              icon: Icons.monitor_weight_outlined,
-              title: 'Poids et mensurations',
-              message: 'Arrive bientôt.',
-            ),
-          ],
+          children: [SessionsTab(), MusclesTab(), BodyTab()],
         ),
       ),
     );

@@ -44,4 +44,30 @@ void main() {
       expect(placeholders.durationSeconds, isNull);
     });
   });
+
+  group('placeholdersOfAll (WO-10)', () {
+    test("une série ajoutée sans équivalent la dernière fois reprend celle "
+        "d'avant dans la séance, même si elle n'est encore que préremplie", () {
+      // 4 séries de la séance en cours, aucune encore saisie ; seules les
+      // 3 premières ont un équivalent la dernière fois (« Précédent »).
+      final sets = [_set(), _set(), _set(), _set()];
+      final previous = [_set(reps: 8), _set(reps: 9), _set(reps: 5)];
+
+      final placeholders = placeholdersOfAll(sets, previous);
+
+      expect(placeholders.map((p) => p.reps), [8, 9, 5, 5]);
+    });
+
+    test('la chaîne suit la vraie valeur dès qu\'une série en a une, pas son '
+        'propre placeholder', () {
+      final sets = [_set(reps: 8), _set(), _set(reps: 12), _set()];
+
+      final placeholders = placeholdersOfAll(sets, const []);
+
+      // set[2] a déjà 12 en vrai : peu importe le placeholder qu'on lui
+      // calcule (ignoré à l'affichage, une vraie valeur prime toujours),
+      // mais set[3] doit repartir de 12, pas de la chaîne d'avant (8).
+      expect(placeholders.map((p) => p.reps), [null, 8, 8, 12]);
+    });
+  });
 }

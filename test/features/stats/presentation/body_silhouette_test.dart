@@ -14,7 +14,7 @@ void main() {
       );
       expect(
         bodyPartAt(BodyView.front, const Offset(305, 296)),
-        BodyPart.trapezius,
+        BodyPart.trapeziusUpper,
       );
       expect(
         bodyPartAt(BodyView.front, const Offset(235, 348)),
@@ -50,8 +50,12 @@ void main() {
     test('dos : trapèzes, dorsaux, lombaires, fessiers, ischios et triceps '
         'remplacent poitrine et abdos (D20)', () {
       expect(
+        bodyPartAt(BodyView.back, const Offset(317, 310)),
+        BodyPart.trapeziusUpper,
+      );
+      expect(
         bodyPartAt(BodyView.back, const Offset(317, 385)),
-        BodyPart.trapezius,
+        BodyPart.trapeziusLower,
       );
       expect(bodyPartAt(BodyView.back, const Offset(270, 362)), BodyPart.lats);
       expect(

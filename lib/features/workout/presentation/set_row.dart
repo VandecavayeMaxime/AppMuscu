@@ -61,23 +61,6 @@ class SetColumns extends StatelessWidget {
   }
 }
 
-/// Fond rouge révélé en balayant une série vers la gauche pour la supprimer
-/// (WO-11).
-class SwipeDeleteBackground extends StatelessWidget {
-  const SwipeDeleteBackground({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      color: colors.errorContainer,
-      alignment: Alignment.centerRight,
-      padding: const EdgeInsets.only(right: 24),
-      child: Icon(Icons.delete_outline, color: colors.onErrorContainer),
-    );
-  }
-}
-
 /// Un champ de saisie d'une série, avec son clavier et ses caractères
 /// autorisés (WO-07).
 enum SetField {
@@ -160,6 +143,7 @@ class SetRow extends ConsumerStatefulWidget {
     required this.set,
     required this.label,
     required this.exercise,
+    required this.placeholders,
     this.previous,
   });
 
@@ -171,6 +155,11 @@ class SetRow extends ConsumerStatefulWidget {
 
   /// Série de même rang lors de la dernière séance (RG-03), s'il y en a une.
   final WorkoutSet? previous;
+
+  /// Valeurs grisées de cette série (RG-11), déjà calculées pour tout
+  /// l'exercice par `placeholdersOfAll` (repli en chaîne sur la séance en
+  /// cours, WO-10).
+  final SetPlaceholders placeholders;
 
   @override
   ConsumerState<SetRow> createState() => _SetRowState();
@@ -237,7 +226,7 @@ class _SetRowState extends ConsumerState<SetRow> {
     final completed = widget.set.completedAt != null;
     final previous = widget.previous;
     // Placeholders grisés : valeurs reprises si on valide sans saisir (RG-11).
-    final placeholders = placeholdersOf(widget.set, previous);
+    final placeholders = widget.placeholders;
 
     return Container(
       color: completed ? completedSetColor(theme.colorScheme) : null,
@@ -348,7 +337,7 @@ class _SetRowState extends ConsumerState<SetRow> {
     }
 
     // Champ vide → valeur du placeholder (RG-11).
-    final placeholders = placeholdersOf(widget.set, widget.previous);
+    final placeholders = widget.placeholders;
     final typedWeight = parseDecimal(_weight.text);
     final weightKg = typedWeight != null
         ? _unit.toKg(typedWeight)

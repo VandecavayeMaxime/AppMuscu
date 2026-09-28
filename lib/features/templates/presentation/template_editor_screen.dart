@@ -9,6 +9,7 @@ import '../../../core/utils/weight_format.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/reorder_list.dart';
+import '../../../core/widgets/swipe_delete_background.dart';
 import '../../exercises/data/exercise_repository.dart';
 import '../../exercises/presentation/exercise_note.dart';
 import '../../exercises/presentation/exercise_providers.dart';

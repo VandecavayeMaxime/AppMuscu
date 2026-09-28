@@ -70,7 +70,29 @@ final Map<BodyPart, Path> _frontMuscles = {
 final Map<BodyPart, Path> _backMuscles = {
   for (final MapEntry(key: part, value: paths) in backBodyPaths.entries)
     part: _combineBack(paths),
+  ..._trapeziusBackSplit(),
 };
+
+/// Scinde le tracé (dos) du trapèze en haut / milieu-bas (D29) : la source
+/// n'a qu'un seul tracé pour tout le trapèze, donc on le découpe ici en 2
+/// par un simple recadrage horizontal, plutôt que de redessiner à la main.
+Map<BodyPart, Path> _trapeziusBackSplit() {
+  final whole = _combineBack(trapeziusBackPaths);
+  final bounds = whole.getBounds();
+  // Le haut du trapèze (nuque, épaules) est plus petit que le milieu/bas
+  // (entre les omoplates) : la limite est placée à 38 % de la hauteur.
+  final splitY = bounds.top + bounds.height * 0.38;
+  Path clip(double top, double bottom) => Path.combine(
+    PathOperation.intersect,
+    whole,
+    Path()..addRect(Rect.fromLTRB(bounds.left, top, bounds.right, bottom)),
+  );
+  return {
+    BodyPart.trapeziusUpper: clip(bounds.top, splitY),
+    BodyPart.trapeziusLower: clip(splitY, bounds.bottom),
+  };
+}
+
 final Path _frontNeutral = _combine(frontNeutralPaths);
 final Path _backNeutral = _combineBack(backNeutralPaths);
 
@@ -90,24 +112,32 @@ BodyPart? bodyPartAt(BodyView view, Offset point) {
   return null;
 }
 
-/// Rouge clair (insuffisant), rouge (correct à optimal) et rouge foncé
-/// (volume élevé) : 3 couleurs franches, sans dégradé, au-delà du gris
-/// neutre (pas travaillé) (SA-04).
-const lightRed = Color(0xFFF87171);
-const mediumRed = Color(0xFF991B1B);
-const darkRed = Color(0xFF450A0A);
+/// Repère (0..[bodyWidth] × 0..[bodyHeight]) du tracé de [part] sur la vue
+/// [view], ou `null` s'il n'y en a pas (ex. les fessiers en vue de face).
+/// Sert à placer une étiquette à hauteur d'un muscle sans deviner sa
+/// position à la main (carte du corps, SA-07).
+Rect? boundsOf(BodyView view, BodyPart part) =>
+    _musclesOf(view)[part]?.getBounds();
+
+/// Bleu (bas), vert (optimal) et orange (élevé) : 3 couleurs franches, sans
+/// dégradé, au-delà du gris neutre (pas travaillé) (SA-04). L'orange plutôt
+/// qu'un rouge pour « élevé » : un volume au-dessus du repère haut n'est pas
+/// forcément un problème, contrairement à ce que suggérerait un rouge franc.
+const lowColor = Color(0xFF60A5FA);
+const optimalColor = Color(0xFF16A34A);
+const highColor = Color(0xFFF97316);
 
 /// Couleur d'un muscle selon ses séries de la semaine (SA-04) : gris (pas
 /// travaillé), puis une des 3 couleurs franches selon la zone où on tombe
-/// (`muscleZoneProgress`, RG-23), pour qu'on distingue vite insuffisant /
-/// correct / élevé.
+/// (`muscleZoneProgress`, RG-23), pour qu'on distingue vite bas / optimal /
+/// élevé.
 Color muscleColor(BuildContext context, BodyPart part, double sets) {
   final neutral = Theme.of(context).colorScheme.surfaceContainerHighest;
   final t = muscleZoneProgress(part, sets);
   if (t <= 0) return neutral;
-  if (t <= 1) return lightRed;
-  if (t <= 2) return mediumRed;
-  return darkRed;
+  if (t <= 1) return lowColor;
+  if (t <= 2) return optimalColor;
+  return highColor;
 }
 
 /// Une silhouette (face ou dos, adaptée de react-native-body-highlighter,

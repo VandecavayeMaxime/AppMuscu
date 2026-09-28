@@ -249,7 +249,7 @@ const _builtIns = <_BuiltIn>[
     secondaryMuscles: [BodyPart.triceps, BodyPart.shoulders],
     equipment: Equipment.bodyweight,
     bodyPart: BodyPart.chest,
-    trackingType: TrackingType.reps,
+    trackingType: TrackingType.weightReps,
     instructions:
         '1. En appui sur des barres parallèles, buste penché en avant.\n'
         '2. Descends en fléchissant les coudes, jusqu’à sentir l’étirement des pectoraux.\n'
@@ -261,7 +261,7 @@ const _builtIns = <_BuiltIn>[
     name: 'Shrug (Dumbbell)',
     secondaryMuscles: [],
     equipment: Equipment.dumbbell,
-    bodyPart: BodyPart.trapezius,
+    bodyPart: BodyPart.trapeziusUpper,
     trackingType: TrackingType.weightReps,
     instructions:
         '1. Debout, un haltère dans chaque main, bras le long du corps.\n'
@@ -274,7 +274,7 @@ const _builtIns = <_BuiltIn>[
     name: 'Shrug (Barbell)',
     secondaryMuscles: [],
     equipment: Equipment.barbell,
-    bodyPart: BodyPart.trapezius,
+    bodyPart: BodyPart.trapeziusUpper,
     trackingType: TrackingType.weightReps,
     instructions:
         '1. Debout, barre tenue devant les cuisses, prise un peu plus large que les épaules.\n'
@@ -287,7 +287,7 @@ const _builtIns = <_BuiltIn>[
     name: 'Upright Row (Barbell)',
     secondaryMuscles: [BodyPart.shoulders, BodyPart.biceps],
     equipment: Equipment.barbell,
-    bodyPart: BodyPart.trapezius,
+    bodyPart: BodyPart.trapeziusUpper,
     trackingType: TrackingType.weightReps,
     instructions:
         '1. Debout, barre tenue devant les cuisses, prise resserrée.\n'
@@ -300,7 +300,7 @@ const _builtIns = <_BuiltIn>[
     name: 'Face Pull (Cable)',
     secondaryMuscles: [BodyPart.shoulders],
     equipment: Equipment.cable,
-    bodyPart: BodyPart.trapezius,
+    bodyPart: BodyPart.trapeziusLower,
     trackingType: TrackingType.weightReps,
     instructions:
         '1. Poulie haute avec corde, prise en marteau.\n'
@@ -480,7 +480,7 @@ const _builtIns = <_BuiltIn>[
   (
     id: 'b9a7bb05-91e6-4d93-a091-8ed7f960ef2b',
     name: 'Rear Delt Fly (Dumbbell)',
-    secondaryMuscles: [BodyPart.trapezius],
+    secondaryMuscles: [BodyPart.trapeziusLower],
     equipment: Equipment.dumbbell,
     bodyPart: BodyPart.shoulders,
     trackingType: TrackingType.weightReps,
@@ -600,7 +600,7 @@ const _builtIns = <_BuiltIn>[
     secondaryMuscles: [BodyPart.chest, BodyPart.shoulders],
     equipment: Equipment.bodyweight,
     bodyPart: BodyPart.triceps,
-    trackingType: TrackingType.reps,
+    trackingType: TrackingType.weightReps,
     instructions:
         '1. En appui sur des barres parallèles, buste bien droit.\n'
         '2. Descends en fléchissant les coudes, sans trop pencher le buste.\n'
@@ -1235,4 +1235,29 @@ List<ExercisesCompanion> get builtInExercisesAddedInV7 => [
 /// traduction française.
 Map<String, String> get builtInNames => {
   for (final e in _builtIns) e.id: e.name,
+};
+
+/// Chest Dip et Tricep Dip (migration v10 → v11, D28) : poids du corps avec
+/// une ceinture de lest possible, donc « poids + reps » plutôt que reps
+/// seules, pour suivre la charge ajoutée.
+const builtInWeightRepsInV11 = <String>{
+  '5190e591-346d-4944-85aa-1204579521d0', // Chest Dip
+  '5871b2cb-cb62-4433-af1d-69da2e1d3c4d', // Tricep Dip
+};
+
+/// Trapèzes divisés en haut et milieu/bas (migration v11 → v12, D29) : les
+/// haussements d'épaules (shrugs, tirage menton) ciblent surtout le haut, les
+/// mouvements de rétraction des omoplates (face pull) le milieu/bas.
+const builtInTrapeziusUpperInV12 = <String>{
+  'f60801a4-8ec9-47bb-83ff-bbf9666388b7', // Shrug (Dumbbell)
+  '7ab07103-9606-4546-a5bb-64f177a69d9d', // Shrug (Barbell)
+  '03d4a6fc-2db5-4dc5-8d44-a2a259a69adb', // Upright Row (Barbell)
+};
+const builtInTrapeziusLowerInV12 = <String>{
+  '75458925-1deb-4d8f-9e4d-acc867a239c3', // Face Pull (Cable)
+};
+
+/// Idem, mais en muscle secondaire (Rear Delt Fly), pas en groupe principal.
+const builtInTrapeziusLowerSecondaryInV12 = <String>{
+  'b9a7bb05-91e6-4d93-a091-8ed7f960ef2b', // Rear Delt Fly (Dumbbell)
 };

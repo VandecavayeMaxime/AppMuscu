@@ -21,6 +21,7 @@ part 'app_database.g.dart';
     Workouts,
     WorkoutExercises,
     WorkoutSets,
+    BodyMeasurements,
     Settings,
   ],
 )
@@ -35,7 +36,7 @@ class AppDatabase extends _$AppDatabase {
   /// 2. `dart run build_runner build` puis `dart run drift_dev make-migrations` ;
   /// 3. écrire l'étape `fromXToY` ci-dessous et compléter test/drift/.
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -146,6 +147,61 @@ class AppDatabase extends _$AppDatabase {
               Variable(normalizeForSearch(name)),
               Variable(id),
             ],
+          );
+        }
+      },
+      // v9 : poids et mensurations (SA-06 à SA-08).
+      from8To9: (m, schema) async {
+        await m.createTable(schema.bodyMeasurements);
+        await m.createIndex(schema.bodyMeasurementsDay);
+      },
+      // v10 : tours de fesses et d'avant-bras en plus (SA-06).
+      from9To10: (m, schema) async {
+        final measurements = schema.bodyMeasurements;
+        await m.addColumn(measurements, measurements.forearmCm);
+        await m.addColumn(measurements, measurements.glutesCm);
+      },
+      // v11 : Chest Dip et Tricep Dip passent en poids + reps, pour suivre
+      // une charge ajoutée à la ceinture (D28).
+      from10To11: (m, schema) async {
+        for (final id in builtInWeightRepsInV11) {
+          await customUpdate(
+            "UPDATE exercises SET tracking_type = 'weightReps' WHERE id = ?",
+            variables: [Variable(id)],
+          );
+        }
+      },
+      // v12 : « Trapèzes » scindé en haut et milieu/bas (D29), sans rien
+      // structurel (même colonne texte). Les exercices intégrés concernés
+      // sont réattribués ; un exercice perso avec « trapezius » (groupe
+      // principal ou secondaire) bascule par défaut vers le haut.
+      from11To12: (m, schema) async {
+        await customStatement(
+          "UPDATE exercises SET body_part = 'trapeziusUpper' "
+          "WHERE body_part = 'trapezius'",
+        );
+        await customStatement(
+          "UPDATE exercises SET secondary_muscles = "
+          "REPLACE(secondary_muscles, 'trapezius', 'trapeziusUpper') "
+          "WHERE secondary_muscles LIKE '%trapezius%'",
+        );
+        for (final id in builtInTrapeziusUpperInV12) {
+          await customUpdate(
+            "UPDATE exercises SET body_part = 'trapeziusUpper' WHERE id = ?",
+            variables: [Variable(id)],
+          );
+        }
+        for (final id in builtInTrapeziusLowerInV12) {
+          await customUpdate(
+            "UPDATE exercises SET body_part = 'trapeziusLower' WHERE id = ?",
+            variables: [Variable(id)],
+          );
+        }
+        for (final id in builtInTrapeziusLowerSecondaryInV12) {
+          await customUpdate(
+            "UPDATE exercises SET secondary_muscles = 'trapeziusLower' "
+            'WHERE id = ?',
+            variables: [Variable(id)],
           );
         }
       },

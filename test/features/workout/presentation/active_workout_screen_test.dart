@@ -250,19 +250,26 @@ void main() {
       expect(stat('Séries', '1'), findsOneWidget);
     });
 
-    testWorkout('sans série validée mais avec des séries remplies : pas de '
-        '« Jeter »', (tester) async {
-      await startWorkout(tester);
-      await addExercises(tester, ['Squat (Barbell)']);
-      await tester.enterText(field(0), '100');
-      await tester.enterText(field(1), '5');
-      await tester.pump();
+    testWorkout(
+      'sans série validée mais avec des séries remplies : « Abandonner » '
+      'plutôt que « Jeter »',
+      (tester) async {
+        await startWorkout(tester);
+        await addExercises(tester, ['Squat (Barbell)']);
+        await tester.enterText(field(0), '100');
+        await tester.enterText(field(1), '5');
+        await tester.pump();
 
-      await tapFinish(tester);
+        await tapFinish(tester);
 
-      expect(inDialog('Jeter'), findsNothing);
-      expect(inDialog('Compléter'), findsOneWidget);
-    });
+        expect(inDialog('Jeter'), findsNothing);
+        expect(inDialog('Compléter'), findsOneWidget);
+
+        await tester.tap(inDialog('Abandonner'));
+        await tester.pumpAndSettle();
+        expect(find.text('Modèles'), findsOneWidget);
+      },
+    );
 
     testWorkout('le résumé affiche les chiffres de la séance', (tester) async {
       await oneValidatedOneReady(tester);
@@ -567,7 +574,7 @@ void main() {
     tester,
   ) async {
     await startWorkout(tester);
-    await addExercises(tester, ['Pull-Up']);
+    await addExercises(tester, ['Push-Up']);
 
     expect(find.byType(TextField), findsOneWidget);
 

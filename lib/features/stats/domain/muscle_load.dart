@@ -34,10 +34,16 @@ typedef VolumeLandmark = ({int low, int high});
 /// [muscleMapBodyParts] couvre tous les muscles suivis).
 const _defaultLandmark = (low: 6, high: 16);
 
+/// Le repère (bas, haut) d'un muscle (RG-23), pour l'afficher à côté de ses
+/// séries de la semaine (SA-04).
+VolumeLandmark landmarkFor(BodyPart part) =>
+    muscleVolumeLandmarks[part] ?? _defaultLandmark;
+
 const muscleVolumeLandmarks = <BodyPart, VolumeLandmark>{
   BodyPart.chest: (low: 6, high: 20),
   BodyPart.lats: (low: 8, high: 22),
-  BodyPart.trapezius: (low: 4, high: 16),
+  BodyPart.trapeziusUpper: (low: 4, high: 16),
+  BodyPart.trapeziusLower: (low: 3, high: 14),
   BodyPart.lowerBack: (low: 3, high: 16),
   BodyPart.shoulders: (low: 6, high: 26),
   BodyPart.biceps: (low: 6, high: 20),
@@ -60,7 +66,7 @@ const muscleVolumeLandmarks = <BodyPart, VolumeLandmark>{
 /// dégradé continu, mais avec un changement net à chaque repère.
 double muscleZoneProgress(BodyPart part, double sets) {
   if (sets <= 0) return 0;
-  final landmark = muscleVolumeLandmarks[part] ?? _defaultLandmark;
+  final landmark = landmarkFor(part);
   if (sets <= landmark.low) return sets / landmark.low;
   if (sets <= landmark.high) {
     return 1 + (sets - landmark.low) / (landmark.high - landmark.low);

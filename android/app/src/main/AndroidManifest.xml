@@ -8,6 +8,17 @@
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
 
+    <!-- Onglet Activité (D36) : lecture seule de Health Connect (pas/distance/
+         calories/sommeil). ACTIVITY_RECOGNITION est requis par Health Connect
+         pour lire les pas ; READ_HEALTH_DATA_HISTORY pour l'historique au-delà
+         des 30 derniers jours (docs/ARCHITECTURE.md §4). -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
+
     <application
         android:label="AppMuscu"
         android:name="${applicationName}"
@@ -33,7 +44,23 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Écran d'autorisation de Health Connect (D36). -->
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
         </activity>
+        <!-- Health Connect y affiche un lien vers la politique de confidentialité
+             (D36) : sans compte ni collecte de données, MainActivity fait l'affaire. -->
+        <activity-alias
+            android:name="ViewPermissionUsageActivity"
+            android:exported="true"
+            android:targetActivity=".MainActivity"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
         <!-- Affiche les notifications programmées (flutter_local_notifications). -->
         <receiver
             android:exported="false"
@@ -53,6 +80,12 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Vérifie si Health Connect est installé (D36) ; intégré à l'OS à
+             partir d'Android 14, sinon à installer depuis le Play Store. -->
+        <package android:name="com.google.android.apps.healthdata" />
+        <intent>
+            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
         </intent>
     </queries>
 </manifest>

@@ -156,19 +156,16 @@ class _MusclesTabState extends ConsumerState<MusclesTab>
   );
 
   Widget _content(List<MuscleUsage> usage) {
-    if (usage.isEmpty) {
-      return const EmptyState(
-        icon: Icons.accessibility_new,
-        title: 'Pas encore de statistiques',
-        message:
-            'Elles apparaîtront après ta première séance avec des séries '
-            'validées.',
-      );
-    }
-
     final load = _loadForWeek(usage, _weekStart);
     final isCurrentWeek = _isCurrentWeek;
-    final ranked = rankedMuscles(load);
+    // Les 16 muscles suivis apparaissent tous, même à 0 séries (D33) : sinon
+    // la liste (et la silhouette, toute grise) donnerait l'impression qu'il
+    // manque des muscles plutôt que de montrer qu'aucun n'a encore été
+    // travaillé.
+    final displayLoad = {
+      for (final part in muscleMapBodyParts) part: load[part] ?? 0.0,
+    };
+    final ranked = rankedMuscles(displayLoad);
     final previousWeek = DateTime(
       _weekStart.year,
       _weekStart.month,
@@ -238,24 +235,13 @@ class _MusclesTabState extends ConsumerState<MusclesTab>
         const SizedBox(height: 8),
         const _Legend(),
         SectionTitle('Séries de la semaine'),
-        if (load.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Aucune série validée cette semaine-là.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          )
-        else
-          for (final entry in ranked)
-            _MuscleRow(
-              part: entry.key,
-              value: entry.value,
-              highlighted: _highlighted == entry.key,
-              onTap: () => _toggleHighlight(entry.key),
-            ),
+        for (final entry in ranked)
+          _MuscleRow(
+            part: entry.key,
+            value: entry.value,
+            highlighted: _highlighted == entry.key,
+            onTap: () => _toggleHighlight(entry.key),
+          ),
       ],
     );
   }

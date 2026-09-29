@@ -47,7 +47,13 @@ enum ExerciseMetric {
   /// Valeurs proposées pour un type de suivi, la première par défaut.
   static List<ExerciseMetric> of(TrackingType trackingType) =>
       switch (trackingType) {
-        TrackingType.weightReps => const [oneRepMax, maxWeight, volume],
+        TrackingType.weightReps => const [
+          oneRepMax,
+          maxWeight,
+          volume,
+          maxReps,
+          totalReps,
+        ],
         TrackingType.reps => const [maxReps, totalReps],
         TrackingType.duration => const [maxDuration, totalDuration],
       };

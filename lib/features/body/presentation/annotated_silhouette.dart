@@ -55,12 +55,14 @@ const _bodyPartOf = {
   BodyMeasurementField.calf: BodyPart.calves,
 };
 
-/// Une silhouette neutre (aucun muscle coloré), annotée des tours déjà
-/// saisis, chacun à hauteur de sa partie du corps (SA-07). Remplace la
-/// silhouette d'origine, jugée moins lisible qu'une liste simple pour les
-/// autres mesures (D26) — seuls les tours en profitent, avec la silhouette
-/// déjà dessinée pour la carte des muscles. Toucher directement le dessin
-/// marche aussi pour les tours qui ont un tracé musculaire (D31).
+/// Une silhouette neutre (aucun muscle coloré), annotée des 9 tours, chacun à
+/// hauteur de sa partie du corps (SA-07). Remplace la silhouette d'origine,
+/// jugée moins lisible qu'une liste simple pour les autres mesures (D26) —
+/// seuls les tours en profitent, avec la silhouette déjà dessinée pour la
+/// carte des muscles. Toucher directement le dessin marche aussi pour les
+/// tours qui ont un tracé musculaire (D31). Les 9 étiquettes sont toujours là,
+/// même sans valeur encore saisie (D33) : sinon la silhouette semblerait
+/// incomplète plutôt que de montrer ce qui reste à ajouter.
 class AnnotatedBodySilhouette extends StatelessWidget {
   const AnnotatedBodySilhouette({
     super.key,
@@ -70,15 +72,16 @@ class AnnotatedBodySilhouette extends StatelessWidget {
     required this.onTap,
   });
 
-  /// Dernière valeur de chaque tour déjà saisi (les autres n'apparaissent
-  /// pas).
+  /// Dernière valeur de chaque tour déjà saisi ; absent = pas encore saisi.
   final Map<BodyMeasurementField, double> values;
   final Map<BodyMeasurementField, MeasurementDelta?> deltas;
 
   /// Le tour actuellement affiché dans le graphique, s'il y en a un (D31).
   final BodyMeasurementField? selected;
 
-  /// Toucher une étiquette ou une zone du dessin sélectionne ce tour (D31).
+  /// Toucher une étiquette ou une zone du dessin avec une valeur sélectionne
+  /// ce tour (D31) ; les tours sans valeur ne font rien, faute d'historique à
+  /// afficher.
   final ValueChanged<BodyMeasurementField> onTap;
 
   @override
@@ -87,13 +90,13 @@ class AnnotatedBodySilhouette extends StatelessWidget {
     final left = <MapEntry<BodyMeasurementField, double>>[];
     final right = <MapEntry<BodyMeasurementField, double>>[];
     for (final field in BodyMeasurementField.circumferences) {
-      final value = values[field];
-      if (value == null) continue;
       final (heightFraction, onLeft) = anchors[field]!;
       (onLeft ? left : right).add(MapEntry(field, heightFraction));
     }
 
-    const sideWidth = 120.0;
+    // Assez large pour « Avant-bras » seul (sans valeur encore saisie, D33),
+    // le plus long des 9 noms de tour.
+    const sideWidth = 132.0;
     // Hauteur de la ligne principale (nom + valeur + trait) : fixe, pour que
     // son centre tombe pile sur la hauteur anatomique calculée, l'écart (une
     // ligne de plus, facultative) ne faisant que s'ajouter en dessous sans
@@ -128,10 +131,12 @@ class AnnotatedBodySilhouette extends StatelessWidget {
                       left: 0,
                       right: 0,
                       child: GestureDetector(
-                        onTap: () => onTap(field),
+                        onTap: values.containsKey(field)
+                            ? () => onTap(field)
+                            : null,
                         child: _CircumferenceLabel(
                           field: field,
-                          value: values[field]!,
+                          value: values[field],
                           delta: deltas[field],
                           leaderOnRight: entries == left,
                           lineHeight: lineHeight,
@@ -188,7 +193,9 @@ class _CircumferenceLabel extends StatelessWidget {
   });
 
   final BodyMeasurementField field;
-  final double value;
+
+  /// `null` si ce tour n'a encore aucune valeur saisie (D33).
+  final double? value;
   final MeasurementDelta? delta;
   final bool leaderOnRight;
   final double lineHeight;
@@ -199,10 +206,15 @@ class _CircumferenceLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final value = this.value;
     final label = Text(
-      '${field.label} ${formatNumber(value)}',
+      value == null ? field.label : '${field.label} ${formatNumber(value)}',
       style: theme.textTheme.labelMedium?.copyWith(
-        color: selected ? theme.colorScheme.primary : null,
+        color: value == null
+            ? theme.colorScheme.onSurfaceVariant
+            : selected
+            ? theme.colorScheme.primary
+            : null,
         fontWeight: selected ? FontWeight.bold : null,
       ),
       textAlign: leaderOnRight ? TextAlign.right : TextAlign.left,

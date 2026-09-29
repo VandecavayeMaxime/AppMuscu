@@ -84,6 +84,15 @@ class _AppMuscuState extends ConsumerState<AppMuscu> {
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       routerConfig: ref.watch(routerProvider),
+      // Toucher en dehors d'un champ referme le clavier (D34), en plus de
+      // glisser sur une liste (`keyboardDismissBehavior`, posé où il y a des
+      // champs de saisie). `HitTestBehavior.translucent` pour que le geste
+      // ne prenne pas le dessus sur les boutons et autres gestes en dessous.
+      builder: (context, child) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: child,
+      ),
     );
   }
 }

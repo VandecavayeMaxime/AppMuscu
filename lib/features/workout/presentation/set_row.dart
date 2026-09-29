@@ -120,6 +120,13 @@ class SetInputField extends StatelessWidget {
       ],
       textAlign: TextAlign.center,
       onChanged: onChanged,
+      // Sélectionne tout au toucher : le champ centre son texte, donc un
+      // appui au milieu placerait sinon le curseur au milieu du nombre —
+      // écrire remplacerait une partie plutôt que tout (D34).
+      onTap: () => controller.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: controller.text.length,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         isDense: true,

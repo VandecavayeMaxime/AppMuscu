@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Onglet Activité (D36) : lecture seule des pas, distance, calories et
+	     sommeil dans Apple Santé. -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>AppMuscu lit tes pas, ta distance, tes calories et ton sommeil pour les afficher dans l'onglet Activité.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

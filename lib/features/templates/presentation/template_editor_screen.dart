@@ -149,6 +149,10 @@ class _TemplateEditorScreenState extends ConsumerState<TemplateEditorScreen> {
                 onDone: () => setState(() => _reordering = false),
               )
             : ListView(
+                // Glisser referme le clavier (D34), en plus de toucher en
+                // dehors d'un champ (voir `AppMuscu.builder`).
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.only(bottom: 32),
                 children: [
                   Padding(

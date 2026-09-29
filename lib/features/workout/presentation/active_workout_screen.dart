@@ -130,6 +130,10 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
               },
               child: SingleChildScrollView(
                 key: _scrollViewKey,
+                // Glisser referme le clavier (D34), en plus de toucher en
+                // dehors d'un champ (voir `AppMuscu.builder`).
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.only(bottom: 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,

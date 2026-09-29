@@ -14,11 +14,16 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testApp('sans mesure : un message et un bouton pour en ajouter', (
-    tester,
-  ) async {
+  testApp('sans mesure : le corps et ses 9 tours quand même, un message et un '
+      'bouton pour en ajouter (D33)', (tester) async {
     await openBody(tester);
-    expect(find.text('Pas encore de mesure'), findsOneWidget);
+    expect(find.text('Cou'), findsOneWidget);
+    expect(find.text('Avant-bras'), findsOneWidget);
+    expect(find.text('Mollet'), findsOneWidget);
+    expect(
+      find.text('Ajoute ton poids ou tes tours pour suivre leur évolution.'),
+      findsOneWidget,
+    );
     expect(find.widgetWithText(FilledButton, 'Mesure'), findsOneWidget);
   });
 

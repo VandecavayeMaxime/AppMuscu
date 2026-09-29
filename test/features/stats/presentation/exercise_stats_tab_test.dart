@@ -92,9 +92,12 @@ void main() {
       // Espace fine insécable entre les milliers (formatVolume).
       expect(trailing('Meilleur volume', '1\u202f130 kg'), findsOneWidget);
 
-      // Records par nombre de reps : 1, 3, 5 et 8 reps.
+      // Records par nombre de reps : 1, 3, 5 et 8 reps. Avec les 2 choix de
+      // plus pour la courbe (Reps max/totales, D35), la page est plus
+      // longue : on défile jusqu'à chaque valeur plutôt que juste le titre.
       await scrollTo(tester, find.text('Records par nombre de reps'));
       for (final weight in ['100 kg', '95 kg', '90 kg']) {
+        await scrollTo(tester, find.text(weight));
         expect(find.text(weight), findsWidgets);
       }
 

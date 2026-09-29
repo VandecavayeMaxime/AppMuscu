@@ -53,6 +53,8 @@ void main() {
         ExerciseMetric.oneRepMax,
         ExerciseMetric.maxWeight,
         ExerciseMetric.volume,
+        ExerciseMetric.maxReps,
+        ExerciseMetric.totalReps,
       ]);
       expect(
         ExerciseMetric.of(TrackingType.duration).first,

@@ -1,6 +1,7 @@
 import 'package:app_muscu/core/utils/date_format.dart';
 import 'package:app_muscu/features/stats/domain/weekly_sessions.dart';
 import 'package:app_muscu/features/stats/presentation/body_silhouette.dart';
+import 'package:app_muscu/features/stats/presentation/muscles_tab.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -47,6 +48,29 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Finder musclesScrollable() => find
+      .descendant(
+        of: find.byType(MusclesTab),
+        matching: find.byType(Scrollable),
+      )
+      .first;
+
+  /// Remonte la liste tout en haut (comme après un changement de semaine,
+  /// avant de vérifier l'ordre des muscles les plus travaillés).
+  Future<void> scrollToTop(WidgetTester tester) async {
+    await tester.drag(musclesScrollable(), const Offset(0, 100000));
+    await tester.pumpAndSettle();
+  }
+
+  /// Fait défiler l'onglet jusqu'à [label] : avec les 16 muscles toujours
+  /// listés (D33), les derniers de la liste dépassent l'écran de test.
+  Future<void> scrollToMuscle(WidgetTester tester, String label) =>
+      tester.scrollUntilVisible(
+        find.text(label),
+        200,
+        scrollable: musclesScrollable(),
+      );
+
   double? rowHighlightAlpha(WidgetTester tester, String label) {
     final box = tester.widget<ColoredBox>(
       find.descendant(
@@ -75,10 +99,18 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testApp('sans série validée : un message', (tester) async {
-    await openMuscles(tester);
-    expect(find.text('Pas encore de statistiques'), findsOneWidget);
-  });
+  testApp(
+    'sans série validée : le corps et ses 16 muscles quand même, tous à 0 '
+    '(D33)',
+    (tester) async {
+      await openMuscles(tester);
+      expect(find.text('Pectoraux'), findsOneWidget);
+      expect(rowHighlightAlpha(tester, 'Pectoraux'), closeTo(0.3, 0.001));
+      await scrollToMuscle(tester, 'Mollets');
+      expect(find.text('Quadriceps'), findsOneWidget);
+      expect(find.text('Mollets'), findsOneWidget);
+    },
+  );
 
   testApp(
     'une semaine à la fois, du lundi au dimanche, navigable (SA-04, SA-05, '
@@ -112,17 +144,19 @@ void main() {
       for (final label in orderThisWeek) {
         expect(find.text(label), findsOneWidget);
       }
-      expect(find.text('Quadriceps'), findsNothing);
       double top(String s) => tester.getTopLeft(find.text(s)).dy;
       for (var i = 1; i < orderThisWeek.length; i++) {
         expect(top(orderThisWeek[i - 1]), lessThan(top(orderThisWeek[i])));
       }
+      // Non travaillé cette semaine (D33) : toujours listé, mais après.
+      await scrollToMuscle(tester, 'Quadriceps');
+      expect(find.text('Quadriceps'), findsOneWidget);
 
       // Semaine précédente : le squat, pas le bench press.
       await swipeWeek(tester, forward: false);
+      await scrollToTop(tester);
       expect(find.text(formatWeekRange(lastMonday)), findsOneWidget);
       expect(find.text('Revenir à cette semaine'), findsOneWidget);
-      expect(find.text('Pectoraux'), findsNothing);
       final orderLastWeek = ['Quadriceps', 'Ischios', 'Fessiers'];
       for (final label in orderLastWeek) {
         expect(find.text(label), findsOneWidget);
@@ -131,16 +165,21 @@ void main() {
         expect(top(orderLastWeek[i - 1]), lessThan(top(orderLastWeek[i])));
       }
       expect(find.text('0,5'), findsNWidgets(2)); // Ischios et Fessiers
+      // Non travaillé cette semaine-là (D33) : toujours listé, mais après.
+      await scrollToMuscle(tester, 'Pectoraux');
+      expect(find.text('Pectoraux'), findsOneWidget);
 
-      // Encore avant : aucune séance cette semaine-là (mais pas l'écran
-      // « pas encore de statistiques », réservé à l'absence totale de séance).
+      // Encore avant : aucune séance cette semaine-là (D33 : toujours les 16
+      // muscles listés, tous à 0, pas de message dédié).
       await swipeWeek(tester, forward: false);
-      expect(
-        find.text('Aucune série validée cette semaine-là.'),
-        findsOneWidget,
-      );
+      await scrollToTop(tester);
+      expect(find.text('Pectoraux'), findsOneWidget);
+      expect(rowHighlightAlpha(tester, 'Pectoraux'), closeTo(0.3, 0.001));
+      await scrollToMuscle(tester, 'Quadriceps');
+      expect(find.text('Quadriceps'), findsOneWidget);
 
       // Retour direct à la semaine en cours.
+      await scrollToTop(tester);
       await tester.tap(find.text('Revenir à cette semaine'));
       await tester.pumpAndSettle();
       expect(find.text(formatWeekRange(thisMonday)), findsOneWidget);

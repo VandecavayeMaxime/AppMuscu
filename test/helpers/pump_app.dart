@@ -1,6 +1,7 @@
 import 'package:app_muscu/app/app.dart';
 import 'package:app_muscu/core/database/app_database.dart';
 import 'package:app_muscu/core/database/database_provider.dart';
+import 'package:app_muscu/core/platform/health_data.dart';
 import 'package:app_muscu/core/platform/screen_awake.dart';
 import 'package:app_muscu/core/utils/clock_tick.dart';
 import 'package:app_muscu/features/rest_timer/data/rest_notifications.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'fake_health_data.dart';
 import 'fake_rest_notifications.dart';
 import 'fake_screen_awake.dart';
 import 'test_database.dart';
@@ -37,6 +39,7 @@ void testApp(
           clockTickProvider.overrideWith((ref) => const Stream.empty()),
           restNotificationsProvider.overrideWithValue(FakeRestNotifications()),
           screenAwakeProvider.overrideWithValue(FakeScreenAwake()),
+          healthDataProvider.overrideWithValue(FakeHealthData()),
         ],
         child: const AppMuscu(),
       ),
@@ -64,6 +67,12 @@ FakeScreenAwake screenAwakeOf(WidgetTester tester) =>
     ProviderScope.containerOf(tester.element(find.byType(AppMuscu)))
             .read(screenAwakeProvider)
         as FakeScreenAwake;
+
+/// Les fausses données de santé de l'app en cours de test (D36).
+FakeHealthData healthDataOf(WidgetTester tester) =>
+    ProviderScope.containerOf(tester.element(find.byType(AppMuscu)))
+            .read(healthDataProvider)
+        as FakeHealthData;
 
 /// Le défileur de la liste d'exercices (bibliothèque ou sélecteur). Pas
 /// `Scrollable` seul : la barre de filtres défile aussi horizontalement, et

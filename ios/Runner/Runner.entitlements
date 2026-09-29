@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Onglet Activité (D36) : capacité HealthKit, pour lire pas/distance/
+  calories/sommeil dans Apple Santé.
+
+  Préparé à l'aveugle (développement sous Windows, sans Mac ni Xcode) :
+  ce fichier seul ne suffit pas. Il manque encore, à faire sur Mac avant un
+  vrai test iOS :
+   1. Ouvrir ios/Runner.xcworkspace dans Xcode.
+   2. Onglet « Signing & Capabilities » de la cible Runner, ajouter la
+      capacité « HealthKit » (Xcode crée/relie alors ce fichier lui-même,
+      ou pointe vers celui-ci si on le rattache à la main).
+   3. Vérifier que le réglage de build CODE_SIGN_ENTITLEMENTS du projet
+      pointe bien vers Runner/Runner.entitlements.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+</dict>
+</plist>

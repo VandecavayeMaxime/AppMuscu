@@ -105,27 +105,11 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
               onChanged: filterNotifier.search,
             ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              spacing: 8,
-              children: [
-                _FilterChip<BodyPart>(
-                  label: 'Groupe musculaire',
-                  selected: filter.bodyPart,
-                  values: BodyPart.values,
-                  labelOf: (value) => value.label,
-                  onChanged: filterNotifier.filterBodyPart,
-                ),
-                _FilterChip<Equipment>(
-                  label: 'Équipement',
-                  selected: filter.equipment,
-                  values: Equipment.values,
-                  labelOf: (value) => value.label,
-                  onChanged: filterNotifier.filterEquipment,
-                ),
-              ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _FilterButton(mode: _mode),
             ),
           ),
           Expanded(
@@ -206,67 +190,110 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
   }
 }
 
-/// Puce de filtre. Sans filtre : affiche [label] et ouvre la liste des choix.
-/// Avec un filtre : affiche la valeur choisie, avec une croix pour le retirer.
-class _FilterChip<T> extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.values,
-    required this.labelOf,
-    required this.onChanged,
-  });
+/// Un seul bouton pour les deux filtres (groupe musculaire, équipement),
+/// plutôt qu'une puce par catégorie : ouvre une feuille avec les deux à la
+/// fois, comme Strong. Son compte de filtres actifs se coche; une croix les
+/// retire tous.
+class _FilterButton extends ConsumerWidget {
+  const _FilterButton({required this.mode});
 
-  final String label;
-  final T? selected;
-  final List<T> values;
-  final String Function(T value) labelOf;
-  final ValueChanged<T?> onChanged;
+  final ExerciseListMode mode;
 
   @override
-  Widget build(BuildContext context) {
-    final selected = this.selected;
-    if (selected == null) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(exerciseFilterProvider(mode));
+    final count = filter.bodyParts.length + filter.equipment.length;
+    if (count == 0) {
       return ActionChip(
         avatar: const Icon(Icons.filter_list),
-        label: Text(label),
-        onPressed: () => _choose(context),
+        label: const Text('Filtres'),
+        onPressed: () => _openFilters(context),
       );
     }
     return InputChip(
-      label: Text(labelOf(selected)),
+      avatar: const Icon(Icons.filter_list),
+      label: Text('Filtres ($count)'),
       selected: true,
-      onPressed: () => _choose(context),
-      onDeleted: () => onChanged(null),
-      deleteButtonTooltipMessage: 'Retirer le filtre',
+      onPressed: () => _openFilters(context),
+      onDeleted: () =>
+          ref.read(exerciseFilterProvider(mode).notifier).clearFilters(),
+      deleteButtonTooltipMessage: 'Retirer tous les filtres',
     );
   }
 
-  Future<void> _choose(BuildContext context) async {
-    final choice = await showModalBottomSheet<T>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            for (final value in values)
-              ListTile(
-                title: Text(labelOf(value)),
-                trailing: value == selected ? const Icon(Icons.check) : null,
-                onTap: () => Navigator.pop(context, value),
-              ),
-          ],
-        ),
+  void _openFilters(BuildContext context) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => _FilterSheet(mode: mode),
+  );
+}
+
+/// Les deux catégories de filtres l'une sous l'autre, chacune en puces à
+/// cocher (plusieurs valeurs possibles à la fois, comme Strong) plutôt
+/// qu'une liste à choix unique.
+class _FilterSheet extends ConsumerWidget {
+  const _FilterSheet({required this.mode});
+
+  final ExerciseListMode mode;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(exerciseFilterProvider(mode));
+    final notifier = ref.read(exerciseFilterProvider(mode).notifier);
+    final theme = Theme.of(context);
+    final hasFilters =
+        filter.bodyParts.isNotEmpty || filter.equipment.isNotEmpty;
+
+    // Compact (densité, espacements et puces réduits) pour que tout tienne
+    // sans défiler, même avec les 19 groupes musculaires et les 8
+    // équipements : l'idéal est de tout voir d'un coup.
+    Widget section(String title, List<Widget> chips) => Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 4),
+          Wrap(spacing: 4, runSpacing: 4, children: chips),
+        ],
       ),
     );
-    if (choice != null) onChanged(choice);
+
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Filtres', style: theme.textTheme.titleMedium),
+              TextButton(
+                onPressed: hasFilters ? notifier.clearFilters : null,
+                child: const Text('Tout effacer'),
+              ),
+            ],
+          ),
+          section('Groupe musculaire', [
+            for (final part in BodyPart.values)
+              FilterChip(
+                visualDensity: VisualDensity.compact,
+                label: Text(part.label),
+                selected: filter.bodyParts.contains(part),
+                onSelected: (_) => notifier.toggleBodyPart(part),
+              ),
+          ]),
+          section('Équipement', [
+            for (final value in Equipment.values)
+              FilterChip(
+                visualDensity: VisualDensity.compact,
+                label: Text(value.label),
+                selected: filter.equipment.contains(value),
+                onSelected: (_) => notifier.toggleEquipment(value),
+              ),
+          ]),
+        ],
+      ),
+    );
   }
 }

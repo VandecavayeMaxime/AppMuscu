@@ -5,11 +5,13 @@ import '../../workout/data/workout_repository.dart';
 import '../data/exercise_repository.dart';
 import '../domain/exercise_enums.dart';
 
-/// Critères de la liste d'exercices : texte recherché et filtres (EX-02, EX-03).
+/// Critères de la liste d'exercices : texte recherché et filtres (EX-02,
+/// EX-03). Plusieurs valeurs à la fois par catégorie (groupe musculaire,
+/// équipement), comme Strong.
 typedef ExerciseFilter = ({
   String search,
-  BodyPart? bodyPart,
-  Equipment? equipment,
+  Set<BodyPart> bodyParts,
+  Set<Equipment> equipment,
 });
 
 /// Les deux usages de la liste d'exercices : l'onglet Exercices et le
@@ -21,25 +23,33 @@ enum ExerciseListMode { library, picker }
 /// reconstruits à chaque changement.
 class ExerciseFilterNotifier extends Notifier<ExerciseFilter> {
   @override
-  ExerciseFilter build() => (search: '', bodyPart: null, equipment: null);
+  ExerciseFilter build() =>
+      (search: '', bodyParts: const {}, equipment: const {});
 
   void search(String text) => state = (
     search: text,
-    bodyPart: state.bodyPart,
+    bodyParts: state.bodyParts,
     equipment: state.equipment,
   );
 
-  void filterBodyPart(BodyPart? bodyPart) => state = (
+  void toggleBodyPart(BodyPart bodyPart) => state = (
     search: state.search,
-    bodyPart: bodyPart,
+    bodyParts: _toggled(state.bodyParts, bodyPart),
     equipment: state.equipment,
   );
 
-  void filterEquipment(Equipment? equipment) => state = (
+  void toggleEquipment(Equipment equipment) => state = (
     search: state.search,
-    bodyPart: state.bodyPart,
-    equipment: equipment,
+    bodyParts: state.bodyParts,
+    equipment: _toggled(state.equipment, equipment),
   );
+
+  void clearFilters() =>
+      state = (search: state.search, bodyParts: const {}, equipment: const {});
+
+  static Set<T> _toggled<T>(Set<T> values, T value) => values.contains(value)
+      ? ({...values}..remove(value))
+      : {...values, value};
 }
 
 /// Un jeu de critères par usage (`.family`). `.autoDispose` : ceux du
@@ -57,7 +67,7 @@ final exerciseListProvider = StreamProvider.autoDispose
           .watch(exerciseRepositoryProvider)
           .watchExercises(
             search: filter.search,
-            bodyPart: filter.bodyPart,
+            bodyParts: filter.bodyParts,
             equipment: filter.equipment,
           );
     });

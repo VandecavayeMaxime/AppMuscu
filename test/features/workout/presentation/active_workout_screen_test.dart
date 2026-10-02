@@ -549,11 +549,17 @@ void main() {
     await tester.tap(find.text('Ajouter des exercices'));
     await tester.pumpAndSettle();
 
-    await choose('Groupe musculaire', 'Dorsaux');
+    await tester.tap(find.text('Filtres'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilterChip, 'Dorsaux'));
+    await tester.pumpAndSettle();
     expect(find.text('Squat (Barbell)'), findsNothing);
     // Liste triée par ordre alphabétique : seul le début est construit
     // (liste paresseuse), d'où une vérification sur le tout premier.
     expect(find.text('Archer Pull Ups'), findsOneWidget);
+    // Referme la feuille de filtres pour toucher le bouton « Nouvel exercice ».
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Nouvel exercice'));
     await tester.pumpAndSettle();

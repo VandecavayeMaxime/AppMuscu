@@ -396,12 +396,14 @@ class _MuscleRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(flex: 3, child: Text(part.label)),
-                  SizedBox(
-                    width: 32,
-                    child: Text(
-                      formatNumber(value),
-                      textAlign: TextAlign.right,
-                    ),
+                  // Pas de largeur fixe (essayé puis abandonné) : une valeur
+                  // à 2 chiffres avant la virgule (ex. « 10,5 ») y passait
+                  // en deux lignes plutôt que de rester sur une seule.
+                  Text(
+                    formatNumber(value),
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    softWrap: false,
                   ),
                   const SizedBox(width: 12),
                   Expanded(

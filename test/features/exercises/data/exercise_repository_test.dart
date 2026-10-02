@@ -34,8 +34,8 @@ void main() {
     final exercises = await repository
         .watchExercises(
           search: search,
-          bodyPart: bodyPart,
-          equipment: equipment,
+          bodyParts: bodyPart == null ? const {} : {bodyPart},
+          equipment: equipment == null ? const {} : {equipment},
         )
         .first;
     return exercises.map((e) => e.name).toList();

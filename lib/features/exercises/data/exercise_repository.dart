@@ -23,8 +23,8 @@ class ExerciseRepository {
   /// modification de la table, l'écran se met donc à jour tout seul.
   Stream<List<Exercise>> watchExercises({
     String search = '',
-    BodyPart? bodyPart,
-    Equipment? equipment,
+    Set<BodyPart> bodyParts = const {},
+    Set<Equipment> equipment = const {},
   }) {
     final normalized = normalizeForSearch(search);
     final query = _db.select(_db.exercises)
@@ -33,11 +33,11 @@ class ExerciseRepository {
     if (normalized.isNotEmpty) {
       query.where((e) => e.nameNormalized.contains(normalized));
     }
-    if (bodyPart != null) {
-      query.where((e) => e.bodyPart.equalsValue(bodyPart));
+    if (bodyParts.isNotEmpty) {
+      query.where((e) => e.bodyPart.isInValues(bodyParts));
     }
-    if (equipment != null) {
-      query.where((e) => e.equipment.equalsValue(equipment));
+    if (equipment.isNotEmpty) {
+      query.where((e) => e.equipment.isInValues(equipment));
     }
     return query.watch();
   }

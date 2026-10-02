@@ -79,23 +79,36 @@ void main() {
       expect(find.text('Aucun exercice trouvé'), findsOneWidget);
     });
 
-    testApp('filtre par groupe musculaire, puis retire le filtre', (
-      tester,
-    ) async {
+    testApp('filtre par groupe musculaire et équipement (plusieurs choix à la '
+        'fois), puis retire tous les filtres', (tester) async {
       await openExercisesTab(tester);
 
-      await tester.tap(find.text('Groupe musculaire'));
+      await tester.tap(find.text('Filtres'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Dorsaux'));
+      await tester.tap(find.widgetWithText(FilterChip, 'Dorsaux'));
       await tester.pumpAndSettle();
 
       // Liste triée par ordre alphabétique : seul le début est construit
-      // (liste paresseuse), d'où une vérification sur le tout premier.
+      // (liste paresseuse), d'où une vérification sur le tout premier. Le
+      // texte reste trouvable même sous la feuille de filtres : elle ne
+      // démonte pas l'écran en dessous.
       expect(find.text('Archer Pull Ups'), findsOneWidget);
       // Retiré par le filtre : pas un exercice de dos.
       expect(find.text('Ab Wheel Rollout'), findsNothing);
 
-      await tester.tap(find.byTooltip('Retirer le filtre'));
+      // Un deuxième groupe musculaire s'ajoute, ne remplace pas le premier.
+      await tester.tap(find.widgetWithText(FilterChip, 'Quadriceps'));
+      await tester.pumpAndSettle();
+      expect(find.text('Banded Terminal Knee Extension'), findsOneWidget);
+      expect(find.text('Archer Pull Ups'), findsOneWidget);
+
+      // Refermer la feuille (en touchant en dehors) : le bouton affiche le
+      // nombre de filtres actifs.
+      await tester.tapAt(const Offset(20, 20));
+      await tester.pumpAndSettle();
+      expect(find.text('Filtres (2)'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Retirer tous les filtres'));
       await tester.pumpAndSettle();
 
       // Premier de la liste complète, revenu en tête.

@@ -20,10 +20,13 @@ const _periods = [StatsPeriod.month1, StatsPeriod.months3, StatsPeriod.year1];
 
 /// Sous-onglet « Corps » (SA-07) : les tours d'abord (silhouette agrandie,
 /// tactile directement sur le dessin pour ceux qui ont un tracé musculaire,
-/// D31 — toujours affichée, même sans aucune mesure encore saisie, D33), puis
-/// masse grasse et masse musculaire, puis le graphique — celui du poids par
-/// défaut, ou celui du tour qu'on vient de toucher. Toucher le graphique
-/// ouvre sa page (SA-08).
+/// D31 — toujours affichée, même sans aucune mesure encore saisie, D33),
+/// puis le poids seul (chiffre centré, D43), masse grasse et masse
+/// musculaire (en lignes), puis le graphique — celui du poids par défaut,
+/// ou celui du tour qu'on vient de toucher. Le graphique n'ouvre plus sa
+/// page en le touchant (D40) : poids, masse grasse et masse musculaire
+/// restent tapotables, elles. Pour le poids, un choix lissé/brut (D41)
+/// s'ajoute au-dessus de sa courbe.
 class BodyTab extends ConsumerStatefulWidget {
   const BodyTab({super.key});
 
@@ -37,6 +40,10 @@ class _BodyTabState extends ConsumerState<BodyTab> {
   /// Le champ affiché dans le graphique (D31) ; `null` = pas encore touché,
   /// donc le poids par défaut (ou le premier champ qui a une valeur).
   BodyMeasurementField? _selectedField;
+
+  /// Courbe du poids lissée (moyenne sur 7 jours, RG-20) ou valeurs brutes
+  /// (D41). Sans effet sur les autres champs, jamais lissés.
+  var _smoothWeight = true;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +62,7 @@ class _BodyTabState extends ConsumerState<BodyTab> {
   }
 
   Widget _content(List<BodyMeasurement> rows) {
+    final weightPoints = pointsOf(rows, BodyMeasurementField.weight);
     final fatPoints = pointsOf(rows, BodyMeasurementField.bodyFat);
     final muscleMassPoints = pointsOf(rows, BodyMeasurementField.muscleMass);
     final circumferenceValues = _circumferenceValues(rows);
@@ -76,6 +84,24 @@ class _BodyTabState extends ConsumerState<BodyTab> {
             onTap: (f) => setState(() => _selectedField = f),
           ),
         ),
+        // Juste sous la silhouette (D43) : seul le chiffre et l'unité,
+        // centrés — pas de nom ni d'écart, contrairement aux lignes
+        // ci-dessous. Reste tapotable : seul moyen d'ouvrir sa page (SA-08)
+        // depuis que le graphique ne le fait plus (D40).
+        if (weightPoints.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: InkWell(
+              onTap: () => context.push('/stats/mesure/weight'),
+              child: Center(
+                child: Text(
+                  '${formatNumber(weightPoints.last.value)} '
+                  '${BodyMeasurementField.weight.unit}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ),
+          ),
         if (fatPoints.isNotEmpty)
           _SummaryRow(
             field: BodyMeasurementField.bodyFat,
@@ -147,7 +173,7 @@ class _BodyTabState extends ConsumerState<BodyTab> {
 
   /// Le graphique du champ affiché (le poids par défaut, ou le tour qu'on
   /// vient de toucher, D31) : titre, dernière valeur, écart, courbe et
-  /// période. Toucher ouvre sa page (SA-08), comme les autres mesures.
+  /// période. Pas tapotable (D40), contrairement aux autres mesures.
   Widget _fieldSection(List<BodyMeasurement> rows, BodyMeasurementField field) {
     final theme = Theme.of(context);
     final points = pointsOf(rows, field);
@@ -157,9 +183,13 @@ class _BodyTabState extends ConsumerState<BodyTab> {
       useThirtyDayReference: !isCircumference,
     );
     final start = _period.start(clock.now());
+    final isWeight = field == BodyMeasurementField.weight;
     // Le lissage (RG-20) ne concerne que le poids : les tours et la
-    // composition du corps sont saisis trop rarement pour ça.
-    final smoothed = field == BodyMeasurementField.weight
+    // composition du corps sont saisis trop rarement pour ça. Choix laissé
+    // à l'utilisateur pour le poids (D41) : le chiffre affiché au-dessus et
+    // l'écart (RG-21) restent, eux, toujours calculés sur les valeurs
+    // brutes, lissées ou pas.
+    final smoothed = isWeight && _smoothWeight
         ? smoothedWeight(points)
         : [for (final p in points) ChartPoint(p.date, p.value)];
     final chartPoints = [
@@ -167,42 +197,52 @@ class _BodyTabState extends ConsumerState<BodyTab> {
         if (start == null || !point.date.isBefore(start)) point,
     ];
 
-    return InkWell(
-      onTap: () => context.push('/stats/mesure/${field.name}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(field.label, style: theme.textTheme.titleMedium),
-                Text(
-                  '${formatNumber(points.last.value)} ${field.unit}',
-                  style: theme.textTheme.titleMedium,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(field.label, style: theme.textTheme.titleMedium),
+              Text(
+                '${formatNumber(points.last.value)} ${field.unit}',
+                style: theme.textTheme.titleMedium,
+              ),
+            ],
+          ),
+          if (delta != null) _DeltaText(delta, field.unit),
+          const SizedBox(height: 8),
+          if (isWeight)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: true, label: Text('Lissé (7 j)')),
+                  ButtonSegment(value: false, label: Text('Brut')),
+                ],
+                selected: {_smoothWeight},
+                onSelectionChanged: (selection) =>
+                    setState(() => _smoothWeight = selection.first),
+              ),
+            ),
+          if (chartPoints.isNotEmpty)
+            LineChart(points: chartPoints, axisLabel: formatNumber),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final period in _periods)
+                ChoiceChip(
+                  label: Text(period.label),
+                  selected: period == _period,
+                  showCheckmark: false,
+                  onSelected: (_) => setState(() => _period = period),
                 ),
-              ],
-            ),
-            if (delta != null) _DeltaText(delta, field.unit),
-            const SizedBox(height: 8),
-            if (chartPoints.isNotEmpty)
-              LineChart(points: chartPoints, axisLabel: formatNumber),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final period in _periods)
-                  ChoiceChip(
-                    label: Text(period.label),
-                    selected: period == _period,
-                    showCheckmark: false,
-                    onSelected: (_) => setState(() => _period = period),
-                  ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -230,16 +270,22 @@ class _SummaryRow extends StatelessWidget {
     return ListTile(
       onTap: () => context.push('/stats/mesure/${field.name}'),
       title: Text(field.label),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '${formatNumber(points.last.value)} ${field.unit}',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (delta != null) _DeltaText(delta, field.unit),
-        ],
+      trailing: ConstrainedBox(
+        // Sans cette borne, une référence longue (« depuis le 1 sept. »,
+        // D42) peut forcer `Column` à prendre toute la largeur de la
+        // ligne — `ListTile` le refuse (voir sa propre vérification).
+        constraints: const BoxConstraints(maxWidth: 140),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${formatNumber(points.last.value)} ${field.unit}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            if (delta != null) _DeltaText(delta, field.unit),
+          ],
+        ),
       ),
     );
   }
@@ -264,6 +310,8 @@ class _DeltaText extends StatelessWidget {
         : 'depuis le ${formatDayMonth(delta.referenceDate)}';
     return Text(
       '$arrow ${formatNumber(delta.value.abs())} $unit $reference',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: Theme.of(context).textTheme.bodySmall
           ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
     );

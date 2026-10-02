@@ -23,10 +23,11 @@ const _periods = [StatsPeriod.month1, StatsPeriod.months3, StatsPeriod.year1];
 /// D31 — toujours affichée, même sans aucune mesure encore saisie, D33),
 /// puis le poids seul (chiffre centré, D43), masse grasse et masse
 /// musculaire (en lignes), puis le graphique — celui du poids par défaut,
-/// ou celui du tour qu'on vient de toucher. Le graphique n'ouvre plus sa
-/// page en le touchant (D40) : poids, masse grasse et masse musculaire
-/// restent tapotables, elles. Pour le poids, un choix lissé/brut (D41)
-/// s'ajoute au-dessus de sa courbe.
+/// ou celui du champ qu'on vient de toucher (un tour sur la silhouette, le
+/// poids, masse grasse ou masse musculaire, D31/D44/D45). Il n'y a plus de
+/// page séparée par mesure (D45, SA-08 retiré) : tout passe par ce
+/// graphique commun, y compris pour le poids, un choix lissé/brut (D41)
+/// s'ajoutant au-dessus de sa courbe.
 class BodyTab extends ConsumerStatefulWidget {
   const BodyTab({super.key});
 
@@ -86,14 +87,22 @@ class _BodyTabState extends ConsumerState<BodyTab> {
         ),
         // Juste sous la silhouette (D43) : seul le chiffre et l'unité,
         // centrés — pas de nom ni d'écart, contrairement aux lignes
-        // ci-dessous. Reste tapotable : seul moyen d'ouvrir sa page (SA-08)
-        // depuis que le graphique ne le fait plus (D40).
+        // ci-dessous. Toucher sélectionne le poids pour le graphique commun
+        // (comme un tour sur la silhouette, D44) plutôt que d'ouvrir une
+        // autre page (revenir à ça serait revenir au comportement de D31,
+        // retiré en D40).
         if (weightPoints.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: InkWell(
-              onTap: () => context.push('/stats/mesure/weight'),
-              child: Center(
+            // `Center` autour de l'`InkWell`, pas l'inverse : sinon
+            // l'`InkWell` prend toute la largeur de la ligne (celle que
+            // `Center` lui laisse) et la surbrillance couvre bien plus que
+            // le chiffre.
+            child: Center(
+              child: InkWell(
+                onTap: () => setState(
+                  () => _selectedField = BodyMeasurementField.weight,
+                ),
                 child: Text(
                   '${formatNumber(weightPoints.last.value)} '
                   '${BodyMeasurementField.weight.unit}',
@@ -107,12 +116,14 @@ class _BodyTabState extends ConsumerState<BodyTab> {
             field: BodyMeasurementField.bodyFat,
             points: fatPoints,
             useThirtyDayReference: true,
+            onTap: (f) => setState(() => _selectedField = f),
           ),
         if (muscleMassPoints.isNotEmpty)
           _SummaryRow(
             field: BodyMeasurementField.muscleMass,
             points: muscleMassPoints,
             useThirtyDayReference: true,
+            onTap: (f) => setState(() => _selectedField = f),
           ),
         if (field != null)
           _fieldSection(rows, field)
@@ -171,9 +182,10 @@ class _BodyTabState extends ConsumerState<BodyTab> {
         field: points.last.value,
   };
 
-  /// Le graphique du champ affiché (le poids par défaut, ou le tour qu'on
-  /// vient de toucher, D31) : titre, dernière valeur, écart, courbe et
-  /// période. Pas tapotable (D40), contrairement aux autres mesures.
+  /// Le graphique du champ affiché (le poids par défaut, ou le champ qu'on
+  /// vient de toucher, D31/D45) : titre, dernière valeur, écart, courbe et
+  /// période. Pas tapotable (D40) : il n'y a plus de page séparée à ouvrir
+  /// (D45).
   Widget _fieldSection(List<BodyMeasurement> rows, BodyMeasurementField field) {
     final theme = Theme.of(context);
     final points = pointsOf(rows, field);
@@ -248,18 +260,21 @@ class _BodyTabState extends ConsumerState<BodyTab> {
   }
 }
 
-/// Dernière valeur et écart d'un champ (masse grasse, masse musculaire, un
-/// tour), tapotable pour ouvrir sa page (SA-08).
+/// Dernière valeur et écart d'un champ (masse grasse, masse musculaire).
+/// Toucher sélectionne ce champ pour le graphique commun (D45), comme un
+/// tour sur la silhouette ou le chiffre du poids.
 class _SummaryRow extends StatelessWidget {
   const _SummaryRow({
     required this.field,
     required this.points,
     required this.useThirtyDayReference,
+    required this.onTap,
   });
 
   final BodyMeasurementField field;
   final List<MeasurementPoint> points;
   final bool useThirtyDayReference;
+  final ValueChanged<BodyMeasurementField> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +283,7 @@ class _SummaryRow extends StatelessWidget {
       useThirtyDayReference: useThirtyDayReference,
     );
     return ListTile(
-      onTap: () => context.push('/stats/mesure/${field.name}'),
+      onTap: () => onTap(field),
       title: Text(field.label),
       trailing: ConstrainedBox(
         // Sans cette borne, une référence longue (« depuis le 1 sept. »,

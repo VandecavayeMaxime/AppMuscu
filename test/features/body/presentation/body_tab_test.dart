@@ -125,48 +125,43 @@ void main() {
   );
 
   testApp(
-    'touche la masse grasse : sa page, avec l\'historique ; modifier et '
-    'supprimer une valeur (SA-08)',
+    'touche la masse grasse : sélectionne le champ pour le graphique '
+    'commun, pas de page séparée (D45)',
     setUp: (db) async {
       // Un poids, pour que le graphique par défaut soit « Poids » plutôt
       // que « Masse grasse » : sinon la même valeur s'afficherait deux fois
       // (une fois dans le graphique, une fois dans la ligne).
       await addMeasurement(db, day: DateTime(2026, 7, 1), weightKg: 80);
-      await addMeasurement(db, day: DateTime(2026, 8, 1), bodyFatPercent: 18);
       await addMeasurement(db, day: DateTime(2026, 9, 1), bodyFatPercent: 16);
     },
     (tester) async {
       await openBody(tester);
 
+      expect(find.text('Poids'), findsOneWidget); // titre du graphique
+      expect(find.widgetWithText(ListTile, 'Masse grasse'), findsOneWidget);
+
       await tester.tap(find.widgetWithText(ListTile, 'Masse grasse'));
       await tester.pumpAndSettle();
-      expect(find.text('16 %'), findsOneWidget);
-      expect(find.text('18 %'), findsOneWidget);
 
-      // Modifier la plus récente.
-      await tester.tap(find.text('16 %'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), '17');
-      await tester.tap(find.text('Enregistrer'));
-      await tester.pumpAndSettle();
-      expect(find.text('17 %'), findsOneWidget);
-
-      // Supprimer l'autre en la balayant.
-      await tester.drag(find.text('18 %'), const Offset(-500, 0));
-      await tester.pumpAndSettle();
-      expect(find.text('18 %'), findsNothing);
-
-      await tester.tap(find.byType(BackButton));
-      await tester.pumpAndSettle();
-      expect(find.text('17 %'), findsOneWidget);
+      expect(find.byType(BackButton), findsNothing);
+      expect(find.text('Masse grasse'), findsWidgets); // titre du graphique
+      expect(find.text('16 %'), findsWidgets);
     },
   );
 
   testApp(
-    'poids : juste le chiffre sous la silhouette, mais ouvre quand même sa '
-    'page (D43)',
+    'poids : juste le chiffre sous la silhouette, qui sélectionne le poids '
+    'pour le graphique plutôt que d\'ouvrir une page (D43, D44)',
     setUp: (db) async {
       await addMeasurement(db, day: DateTime(2026, 8, 1), weightKg: 80);
+      await db
+          .into(db.bodyMeasurements)
+          .insert(
+            BodyMeasurementsCompanion.insert(
+              measuredAt: DateTime(2026, 8, 2),
+              waistCm: const Value(82),
+            ),
+          );
     },
     (tester) async {
       await openBody(tester);
@@ -175,9 +170,18 @@ void main() {
       // silhouette : juste la valeur, centrée (D43).
       expect(find.widgetWithText(ListTile, 'Poids'), findsNothing);
 
+      // Sélectionne un tour : le graphique change (D31).
+      await tester.tap(find.textContaining('Taille'));
+      await tester.pumpAndSettle();
+      expect(find.text('82 cm'), findsOneWidget);
+
+      // Toucher le chiffre du poids ramène le graphique sur le poids,
+      // sans ouvrir une autre page (D44).
       await tester.tap(find.text('80 kg').first);
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, 'Poids'), findsOneWidget);
+      expect(find.byType(BackButton), findsNothing);
+      expect(find.text('82 cm'), findsNothing);
+      expect(find.text('Poids'), findsOneWidget); // titre du graphique
     },
   );
 

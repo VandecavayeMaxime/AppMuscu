@@ -80,49 +80,10 @@ class BodyRepository {
     return latest;
   }
 
-  /// Modifie la valeur de [field] à la mesure [measurementId] (SA-08).
-  Future<void> updateValue(
-    String measurementId,
-    BodyMeasurementField field,
-    double value,
-  ) async {
-    final companion = _withField(
-      const BodyMeasurementsCompanion(),
-      field,
-      Value(value),
-    );
-    await (_db.update(
-      _db.bodyMeasurements,
-    )..where((m) => m.id.equals(measurementId))).write(companion);
-  }
-
-  /// Efface la valeur de [field] à la mesure [measurementId] (balayer une
-  /// valeur dans sa page, SA-08) ; supprime la mesure entière si elle ne
-  /// contient alors plus aucun champ.
-  Future<void> clearValue(
-    String measurementId,
-    BodyMeasurementField field,
-  ) async {
-    await (_db.update(
-      _db.bodyMeasurements,
-    )..where((m) => m.id.equals(measurementId))).write(
-      _withField(const BodyMeasurementsCompanion(), field, const Value(null)),
-    );
-    final row = await (_db.select(
-      _db.bodyMeasurements,
-    )..where((m) => m.id.equals(measurementId))).getSingleOrNull();
-    if (row != null &&
-        BodyMeasurementField.values.every((f) => f.valueOf(row) == null)) {
-      await (_db.delete(
-        _db.bodyMeasurements,
-      )..where((m) => m.id.equals(measurementId))).go();
-    }
-  }
-
   /// Pose la valeur de [field] sur [companion] (`copyWith`, qui garde les
   /// autres champs déjà posés) : seul endroit qui sait faire correspondre un
   /// [BodyMeasurementField] à sa colonne, pour ne pas risquer d'en oublier un
-  /// (`addMeasurementValues`, `updateValue`, `clearValue`).
+  /// (`addMeasurementValues`).
   BodyMeasurementsCompanion _withField(
     BodyMeasurementsCompanion companion,
     BodyMeasurementField field,
